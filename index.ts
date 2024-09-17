@@ -31,6 +31,23 @@ dotenv.config();
 
 const rhsUrl = process.env.RHS_URL as string;
 const walletKey = process.env.WALLET_KEY as string;
+const OPID_METHOD = 'opid';
+
+core.registerDidMethod(OPID_METHOD, 0b00000011);
+core.registerDidMethodNetwork({
+  method: OPID_METHOD,
+  blockchain: 'optimism',
+  chainId: 11155420,
+  network: 'sepolia',
+  networkFlag: 0b1000_0000 | 0b0000_0010
+});
+core.registerDidMethodNetwork({
+  method: OPID_METHOD,
+  blockchain: 'optimism',
+  chainId: 10,
+  network: 'main',
+  networkFlag: 0b1000_0000 | 0b0000_0001
+});
 
 const defaultNetworkConnection = {
   rpcUrl: process.env.RPC_URL as string,
@@ -38,9 +55,9 @@ const defaultNetworkConnection = {
 };
 
 export const defaultIdentityCreationOptions: IdentityCreationOptions = {
-  method: core.DidMethod.PolygonId,
-  blockchain: core.Blockchain.Polygon,
-  networkId: core.NetworkId.Amoy,
+  method: OPID_METHOD,
+  blockchain: 'optimism',
+  networkId: 'sepolia',
   revocationOpts: {
     type: CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
     id: rhsUrl
