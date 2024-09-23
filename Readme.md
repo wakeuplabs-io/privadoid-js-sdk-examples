@@ -18,22 +18,26 @@
     `example.env`
 
     ```bash
-# reverse hash service url
-RHS_URL="" 
-# state v2 contract address in the sepolia network
-CONTRACT_ADDRESS="0x9a1A258702050BcFB938Ad8Ec0996503473216d1"
-# path to the circuits folder
-CIRCUITS_PATH="./circuits" 
-# key in hex format with eth balance
-WALLET_KEY="" 
-# MongoDB connection string, uses in memory Mongo server if not specified
-MONGO_DB_CONNECTION=""
-# third part yurl to polygon amoy network rpc node
-THIRD_PARTY_RPC_URL="" 
-# third party contract address in the linea test network
-THIRD_PARTY_CONTRACT_ADDRESS=""
-# third party key in hex format with matic balance
-THIRD_PARTY_WALLET_KEY="" 
+    # reverse hash service url or contract address if onchain rhs
+    RHS_URL=""
+    # rhs chain id
+    RHS_CHAIN_ID="11155420"
+    # state v2 contract address in the sepolia network
+    CONTRACT_ADDRESS="0x9a1A258702050BcFB938Ad8Ec0996503473216d1"
+    # path to the circuits folder
+    CIRCUITS_PATH="./circuits" 
+    # key in hex format with eth balance
+    WALLET_KEY="" 
+    # MongoDB connection string, uses in memory Mongo server if not specified
+    MONGO_DB_CONNECTION=""
+    # third part yurl to polygon amoy network rpc node
+    THIRD_PARTY_RPC_URL="" 
+    # third party contract address in the linea test network
+    THIRD_PARTY_CONTRACT_ADDRESS=""
+    # third party key in hex format with matic balance
+    THIRD_PARTY_WALLET_KEY=""
+    # rpc url
+    RPC_URL="https://sepolia.optimism.io"
 
     ```
 
