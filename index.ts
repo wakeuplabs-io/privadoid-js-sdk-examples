@@ -27,10 +27,16 @@ import {
 import { ethers } from 'ethers';
 import dotenv from 'dotenv';
 import { generateRequestData } from './request';
+import { ERC20LinkedUniversalVerifierAbi, UniversalVerifierAbi } from './abi';
 dotenv.config();
 
 const rhsUrl = process.env.RHS_URL as string;
 const walletKey = process.env.WALLET_KEY as string;
+
+// ERC20LinkedUniversalVerifier example deployment in opt-sepolia
+const UNIVERSAL_VERIFIER_ADDRESS = '0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556';
+const ERC20LinkedUniversalVerifier = '0x76A9d02221f4142bbb5C07E50643cCbe0Ed6406C';
+
 const OPID_METHOD = 'opid';
 
 core.registerDidMethod(OPID_METHOD, 0b00000011);
@@ -131,6 +137,27 @@ function createKYCAgeCredentialRequest(
   }
 }
 
+export function prepareInputs(json: { proof: any; pub_signals: string[] }): {
+  inputs: string[];
+  pi_a: string[];
+  pi_b: string[][];
+  pi_c: string[];
+} {
+  const { proof, pub_signals } = json;
+  const { pi_a, pi_b, pi_c } = proof;
+  const [[p1, p2], [p3, p4]] = pi_b;
+  const preparedProof = {
+    pi_a: pi_a.slice(0, 2),
+    pi_b: [
+      [p2, p1],
+      [p4, p3]
+    ],
+    pi_c: pi_c.slice(0, 2)
+  };
+
+  return { inputs: pub_signals, ...preparedProof };
+}
+
 async function identityCreation() {
   console.log('=============== key creation ===============');
 
@@ -141,6 +168,7 @@ async function identityCreation() {
 
   console.log('=============== did ===============');
   console.log(did.string());
+
   console.log('=============== Auth BJJ credential ===============');
   console.log(JSON.stringify(credential));
 }
@@ -1090,64 +1118,11 @@ async function submitZkResponse(useMongoStore = false) {
 
   console.log('================= generate credentialAtomicSigV2OnChain ===================');
 
-  const proofReqSig: ZeroKnowledgeProofRequest = createKYCAgeCredentialRequest(
-    CircuitId.AtomicQuerySigV2OnChain,
-    credentialRequest
-  );
-  const metadata = {
-    id: '7f38a193-0918-4a48-9fac-36adfdb8b542',
-    typ: 'application/iden3comm-plain-json',
-    type: 'https://iden3-communication.io/proofs/1.0/contract-invoke-request',
-    thid: '7f38a193-0918-4a48-9fac-36adfdb8b542',
-    body: {
-      reason: 'airdrop participation',
-      transaction_data: {
-        contract_address: '0x76A9d02221f4142bbb5C07E50643cCbe0Ed6406C',
-        method_id: 'b68967e2',
-        chain_id: 11155420,
-        network: 'opt-sepolia'
-      },
-      scope: [
-        {
-          id: 0,
-          circuitId: 'credentialAtomicQuerySigV2OnChain',
-          query: {
-            allowedIssuers: ['*'],
-            context:
-              'https://raw.githubusercontent.com/iden3/claim-schema-vocab/main/schemas/json-ld/kyc-v3.json-ld',
-            credentialSubject: { birthday: { $lt: 20020101 } },
-            type: 'KYCAgeCredential'
-          }
-        }
-      ]
-    }
-  };
-  const query = {
-    requestId: 0,
-    schema: '74977327600848231385663280181476307657',
-    claimPathKey: '20376033832371109177683048456014525905119173674985843915445634726167450989630',
-    operator: 2,
-    slotIndex: 0,
-    value: [
-      20020101, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 0, 0, 0
-    ],
-    circuitIds: ['credentialAtomicQuerySigV2OnChain'],
-    skipClaimRevocationCheck: false,
-    claimPathNotExists: 0,
-    queryHash: '15045271939084694661437431358729281571840804299863053791890179002991342242959'
-  };
-
-  const {
-    proof: proofSig,
-    pub_signals: proofSigInputs,
-    id,
-    circuitId
-  } = await proofService.generateProof(
+  const requestId = 0;
+  const { proof, pub_signals } = await proofService.generateProof(
     {
       id: 0,
-      requestId: 0,
+      requestId,
       circuitId: 'credentialAtomicQuerySigV2OnChain',
       optional: false,
       query: {
@@ -1157,50 +1132,73 @@ async function submitZkResponse(useMongoStore = false) {
         credentialSubject: { birthday: { $lt: 20020101 } },
         type: 'KYCAgeCredential'
       }
-    } as any,
+    } as any, // TODO: expand type to include requestId
     userDID,
     {
+      // TODO: Manually calculated with PrimitiveTypeUtils.addressToUint256LE(sender); add js function
       challenge: BigInt('1372133569577688864461476957267755639645351728375'),
       skipRevocation: false
     }
   );
 
-  const sigProofOk = await proofService.verifyProof(
-    { proof: proofSig, pub_signals: proofSigInputs },
+  const valid = await proofService.verifyProof(
+    { proof, pub_signals },
     CircuitId.AtomicQuerySigV2OnChain
   );
-  console.log('valid: ', sigProofOk);
+  console.log('Proof ok: ', valid);
 
-  console.log('================= submit proofs ===============');
+  console.log('================= Get request status ===============');
 
-  // const UNIVERSAL_VERIFIER_ADDRESS = '0x65B5eF89aD1D9f1386254aD0230C8ac91681b295';
-  // const universalVerifier = new ethers.Contract(
-  //   UNIVERSAL_VERIFIER_ADDRESS,
-  //   UniversalVerifierAbi,
-  //   ethSigner
-  // );
+  const universalVerifier = new ethers.Contract(
+    UNIVERSAL_VERIFIER_ADDRESS,
+    UniversalVerifierAbi,
+    ethSigner
+  );
 
-  // const requestId = 1; // mtp
-  // const inputs: string[] = proofMtpInputs;
-  // const proof_a: string[] = proofMTP.pi_a;
-  // const proof_b: string[][] = proofMTP.pi_b;
-  // const proof_c: string[] = proofMTP.pi_c;
+  console.log('ZKPRequest', await universalVerifier.getZKPRequest(requestId));
 
-  // // console.log('getting status');
-  // const status = await universalVerifier.getProofStatus(ethSigner.address, requestId);
-  // console.log('status: ', status);
+  console.log(
+    'Proof status',
+    await universalVerifier.getProofStatus(ethSigner.getAddress(), requestId)
+  );
 
-  // console.log('submitting mtp proofs', requestId, inputs, proof_a, proof_b, proof_c);
+  console.log('================= Submit proof ===============');
 
-  // const tx = await universalVerifier.verifyZKPResponse(
-  //   requestId,
-  //   inputs,
-  //   proof_a.slice(0, 2),
-  //   proof_b.slice(0, 2),
-  //   proof_c.slice(0, 2),
-  //   await ethSigner.getAddress()
-  // );
-  // console.log('tx: ', tx);
+  const { inputs, pi_a, pi_b, pi_c } = prepareInputs({ proof, pub_signals });
+
+  const submitZkpResponseTx = await universalVerifier.submitZKPResponse(
+    requestId,
+    inputs,
+    pi_a,
+    pi_b,
+    pi_c
+  );
+  await submitZkpResponseTx.wait();
+
+  console.log('Submit ZKPResponse tx hash', submitZkpResponseTx.hash);
+
+  console.log('================= Get request status ===============');
+
+  console.log(
+    'Proof status',
+    await universalVerifier.getProofStatus(ethSigner.getAddress(), requestId)
+  );
+
+  console.log('================= Mint erc20 airdrop ===============');
+
+  const erc20Verifier = new ethers.Contract(
+    ERC20LinkedUniversalVerifier,
+    ERC20LinkedUniversalVerifierAbi,
+    ethSigner
+  );
+
+  console.log('Balance before', await erc20Verifier.balanceOf(await ethSigner.getAddress()));
+
+  const mintTx = await erc20Verifier.mint(await ethSigner.getAddress());
+  await mintTx.wait();
+
+  console.log('MintTx hash', mintTx.hash);
+  console.log('Balance after', await erc20Verifier.balanceOf(await ethSigner.getAddress()));
 }
 
 async function main(choice: string) {
@@ -1262,7 +1260,6 @@ async function main(choice: string) {
       await generateProofs(true);
       await handleAuthRequest(true);
       await handleAuthRequestV3CircuitsBetaStateTransition();
-      await submitZkResponse();
   }
 }
 
