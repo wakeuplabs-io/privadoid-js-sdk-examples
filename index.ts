@@ -165,6 +165,7 @@ function generateChallenge(address: string): bigint {
   }
 
   function reverseUint256(input: bigint) {
+    // mask to restrict to 256 bits
     const MASK_256 = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
     let v = BigInt(input);
 
