@@ -46,26 +46,19 @@ import {
   Iden3SmtRhsCredentialStatusPublisher,
   Iden3OnchainSmtCredentialStatusPublisher,
   OnChainRevocationStorage
-} from '@0xpolygonid/js-sdk';
+} from '@wakeuplabs/opid-sdk';
 import path from 'path';
-import dotenv from 'dotenv';
-dotenv.config();
 import { MongoDataSourceFactory, MerkleTreeMongodDBStorage } from '@0xpolygonid/mongo-storage';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db } from 'mongodb';
 import { ethers } from 'ethers';
-
-const circuitsFolder = process.env.CIRCUITS_PATH ?? '';
-const mongoDbConnection = process.env.MONGO_DB_CONNECTION ?? '';
-const rpcUrl = process.env.RPC_URL ?? '';
-const chainId = process.env.RHS_CHAIN_ID ? +process.env.RHS_CHAIN_ID : undefined;
-const StateContractAddress = process.env.CONTRACT_ADDRESS ?? '';
+import { config } from './config';
 
 const conf: EthConnectionConfig = {
   ...defaultEthConnectionConfig,
-  contractAddress: StateContractAddress,
-  url: rpcUrl,
-  chainId
+  contractAddress: config.stateContractAddress,
+  url: config.rpcUrl,
+  chainId: config.chainId
 };
 
 export function initInMemoryDataStorage(): IDataStorage {
@@ -88,14 +81,14 @@ export function initInMemoryDataStorage(): IDataStorage {
 }
 
 export async function initMongoDataStorage(): Promise<IDataStorage> {
-  let url = mongoDbConnection;
+  let url = config.mongoConnString;
   if (!url) {
     const mongodb = await MongoMemoryServer.create();
     url = mongodb.getUri();
   }
   const client = new MongoClient(url);
   await client.connect();
-  const db: Db = client.db('mongodb- sdk-example');
+  const db: Db = client.db(config.mongoTableName);
 
   const dataStorage = {
     credential: new CredentialStorage(
@@ -129,7 +122,7 @@ export async function initIdentityWallet(
   if (!process.env.WALLET_KEY) throw new Error('wallet key not configured');
   const ethSigner = new ethers.Wallet(
     process.env.WALLET_KEY!,
-    (dataStorage.states as EthStateStorage).getRpcProvider()
+    dataStorage.states.getRpcProvider()
   );
   if (process.env.RHS_URL?.startsWith('0x'))
     credentialStatusPublisherRegistry.register(
@@ -190,7 +183,7 @@ export async function initCredentialWallet(dataStorage: IDataStorage): Promise<C
 
 export async function initCircuitStorage(): Promise<ICircuitStorage> {
   return new FSCircuitStorage({
-    dirname: path.join(__dirname, circuitsFolder)
+    dirname: path.join(__dirname, config.circuitsFolder)
   });
 }
 export async function initProofService(

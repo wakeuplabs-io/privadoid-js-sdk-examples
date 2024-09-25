@@ -14,7 +14,7 @@ import {
   ProofType,
   AuthorizationRequestMessageBody,
   byteEncoder
-} from '@0xpolygonid/js-sdk';
+} from '@wakeuplabs/opid-sdk';
 
 import {
   initInMemoryDataStorageAndWallets,
@@ -24,7 +24,7 @@ import {
   initMongoDataStorageAndWallets
 } from './walletSetup';
 
-import { ethers } from 'ethers';
+import { ethers, Provider, Signer, Wallet } from 'ethers';
 import dotenv from 'dotenv';
 import { generateRequestData } from './request';
 dotenv.config();
@@ -199,8 +199,8 @@ async function transitState() {
 
   const ethSigner = new ethers.Wallet(
     walletKey,
-    (dataStorage.states as EthStateStorage).getRpcProvider()
-  );
+    (dataStorage.states as EthStateStorage).getRpcProvider() as unknown as Provider
+  )
   const txId = await proofService.transitState(
     issuerDID,
     res.oldTreeState,
@@ -346,9 +346,9 @@ async function generateProofs(useMongoStore = false) {
 
   console.log('================= publish to blockchain ===================');
 
-  const ethSigner = new ethers.Wallet(
+  const ethSigner = new Wallet(
     walletKey,
-    (dataStorage.states as EthStateStorage).getRpcProvider()
+    (dataStorage.states as EthStateStorage).getRpcProvider() as unknown as Provider
   );
   const txId = await proofService.transitState(
     issuerDID,
