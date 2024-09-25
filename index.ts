@@ -165,38 +165,35 @@ function generateChallenge(address: string): bigint {
   }
 
   function reverseUint256(input: bigint) {
-    let v = input;
+    const MASK_256 = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
+    let v = BigInt(input);
 
-    // swap bytes
+    // Swap bytes
     v =
-      ((v & BigInt('0xff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00')) >>
-        BigInt(8)) |
-      ((v & BigInt('0x00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff')) <<
-        BigInt(8));
+      ((v & BigInt('0xFF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00')) >> 8n) |
+      ((v & BigInt('0x00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF')) << 8n);
+    v &= MASK_256;
 
-    // swap 2-byte long pairs
+    // Swap 2-byte long pairs
     v =
-      ((v & BigInt('0xffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000')) >>
-        BigInt(16)) |
-      ((v & BigInt('0x0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff0000ffff')) <<
-        BigInt(16));
+      ((v & BigInt('0xFFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000')) >> 16n) |
+      ((v & BigInt('0x0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF')) << 16n);
+    v &= MASK_256;
 
-    // swap 4-byte long pairs
+    // Swap 4-byte long pairs
     v =
-      ((v & BigInt('0xffffffff00000000ffffffff00000000ffffffff00000000ffffffff00000000')) >>
-        BigInt(32)) |
-      ((v & BigInt('0x00000000ffffffff00000000ffffffff00000000ffffffff00000000ffffffff')) <<
-        BigInt(32));
+      ((v & BigInt('0xFFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000')) >> 32n) |
+      ((v & BigInt('0x00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF')) << 32n);
+    v &= MASK_256;
 
-    // swap 8-byte long pairs
+    // Swap 8-byte long pairs
     v =
-      ((v & BigInt('0xffffffffffffffff0000000000000000ffffffffffffffff0000000000000000')) >>
-        BigInt(64)) |
-      ((v & BigInt('0x0000000000000000ffffffffffffffff0000000000000000ffffffffffffffff')) <<
-        BigInt(64));
+      ((v & BigInt('0xFFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF0000000000000000')) >> 64n) |
+      ((v & BigInt('0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF')) << 64n);
+    v &= MASK_256;
 
-    // swap 16-byte long pairs
-    v = (v >> BigInt(128)) | (v << BigInt(128));
+    // Swap 16-byte long pairs
+    v = ((v >> 128n) | (v << 128n)) & MASK_256;
 
     return v;
   }
