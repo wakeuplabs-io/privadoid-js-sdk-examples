@@ -27,15 +27,17 @@ import {
 import { ethers, getBytes, hexlify } from 'ethers';
 import dotenv from 'dotenv';
 import { generateRequestData } from './request';
-import { ERC20LinkedUniversalVerifierAbi, UniversalVerifierAbi } from './abi';
+import { Erc20AirdropAbi, Erc20VerifierAbi } from './abi';
 dotenv.config();
 
 const rhsUrl = process.env.RHS_URL as string;
 const walletKey = process.env.WALLET_KEY as string;
 
 // opt-sepolia example deployment
-const UNIVERSAL_VERIFIER_ADDRESS = '0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556';
+const ERC20_VERIFIER_ADDRESS = '0xE5012898489C708CF273E6CD0b935c0780a9DDB5'; // Universal Verifier (0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556) or ERC20 Verifier (0xE5012898489C708CF273E6CD0b935c0780a9DDB5)
 const ERC20_ZK_AIRDROP_ADDRESS = '0x76A9d02221f4142bbb5C07E50643cCbe0Ed6406C';
+const TRANSFER_REQUEST_ID_SIG_VALIDATOR = 1;
+const TRANSFER_REQUEST_ID_MTP_VALIDATOR = 2;
 
 const OPID_METHOD = 'opid';
 core.registerDidMethod(OPID_METHOD, 0b00000011);
@@ -1161,10 +1163,9 @@ async function submitSigV2ZkResponse(useMongoStore = false) {
 
   console.log('================= generate credentialAtomicSigV2OnChain ===================');
 
-  const requestId = 1;
   const { proof, pub_signals } = await proofService.generateProof(
     {
-      id: requestId,
+      id: TRANSFER_REQUEST_ID_SIG_VALIDATOR,
       circuitId: CircuitId.AtomicQuerySigV2OnChain,
       optional: false,
       query: {
@@ -1190,15 +1191,14 @@ async function submitSigV2ZkResponse(useMongoStore = false) {
 
   console.log('================= Get request status ===============');
 
-  const universalVerifier = new ethers.Contract(
-    UNIVERSAL_VERIFIER_ADDRESS,
-    UniversalVerifierAbi,
-    ethSigner
+  const erc20Verifier = new ethers.Contract(ERC20_VERIFIER_ADDRESS, Erc20VerifierAbi, ethSigner);
+
+  console.log('ZKPRequest', await erc20Verifier.getZKPRequest(TRANSFER_REQUEST_ID_SIG_VALIDATOR));
+
+  const status = await erc20Verifier.getProofStatus(
+    ethSigner.getAddress(),
+    TRANSFER_REQUEST_ID_SIG_VALIDATOR
   );
-
-  console.log('ZKPRequest', await universalVerifier.getZKPRequest(requestId));
-
-  const status = await universalVerifier.getProofStatus(ethSigner.getAddress(), requestId);
   console.log('Proof status', status.isVerified);
 
   if (status.isVerified) {
@@ -1209,8 +1209,8 @@ async function submitSigV2ZkResponse(useMongoStore = false) {
 
   const { inputs, pi_a, pi_b, pi_c } = prepareInputs({ proof, pub_signals });
 
-  const submitZkpResponseTx = await universalVerifier.submitZKPResponse(
-    requestId,
+  const submitZkpResponseTx = await erc20Verifier.submitZKPResponse(
+    TRANSFER_REQUEST_ID_SIG_VALIDATOR,
     inputs,
     pi_a,
     pi_b,
@@ -1224,24 +1224,20 @@ async function submitSigV2ZkResponse(useMongoStore = false) {
 
   console.log(
     'Proof status',
-    await universalVerifier.getProofStatus(ethSigner.getAddress(), requestId)
+    await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_SIG_VALIDATOR)
   );
 
   console.log('================= Mint erc20 airdrop ===============');
 
-  const erc20Verifier = new ethers.Contract(
-    ERC20_ZK_AIRDROP_ADDRESS,
-    ERC20LinkedUniversalVerifierAbi,
-    ethSigner
-  );
+  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
 
-  console.log('Balance before', await erc20Verifier.balanceOf(await ethSigner.getAddress()));
+  console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 
-  const mintTx = await erc20Verifier.mint(await ethSigner.getAddress());
+  const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
   await mintTx.wait();
 
   console.log('MintTx hash', mintTx.hash);
-  console.log('Balance after', await erc20Verifier.balanceOf(await ethSigner.getAddress()));
+  console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 }
 
 async function submitMtpV2ZkResponse(useMongoStore = false) {
@@ -1306,10 +1302,9 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
 
   console.log('================= generate credentialAtomicQueryMTPV2OnChain ===================');
 
-  const requestId = 2; // according to what we set with setZKPRequest
   const { proof, pub_signals } = await proofService.generateProof(
     {
-      id: requestId,
+      id: TRANSFER_REQUEST_ID_MTP_VALIDATOR,
       circuitId: CircuitId.AtomicQueryMTPV2OnChain,
       optional: false,
       query: {
@@ -1335,15 +1330,14 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
 
   console.log('================= Get request status ===============');
 
-  const universalVerifier = new ethers.Contract(
-    UNIVERSAL_VERIFIER_ADDRESS,
-    UniversalVerifierAbi,
-    ethSigner
+  const erc20Verifier = new ethers.Contract(ERC20_VERIFIER_ADDRESS, Erc20VerifierAbi, ethSigner);
+
+  console.log('ZKPRequest', await erc20Verifier.getZKPRequest(TRANSFER_REQUEST_ID_MTP_VALIDATOR));
+
+  const status = await erc20Verifier.getProofStatus(
+    ethSigner.getAddress(),
+    TRANSFER_REQUEST_ID_MTP_VALIDATOR
   );
-
-  console.log('ZKPRequest', await universalVerifier.getZKPRequest(requestId));
-
-  const status = await universalVerifier.getProofStatus(ethSigner.getAddress(), requestId);
   console.log('Proof status', status.isVerified);
 
   if (status.isVerified) {
@@ -1354,8 +1348,8 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
 
   const { inputs, pi_a, pi_b, pi_c } = prepareInputs({ proof, pub_signals });
 
-  const submitZkpResponseTx = await universalVerifier.submitZKPResponse(
-    requestId,
+  const submitZkpResponseTx = await erc20Verifier.submitZKPResponse(
+    TRANSFER_REQUEST_ID_MTP_VALIDATOR,
     inputs,
     pi_a,
     pi_b,
@@ -1369,24 +1363,20 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
 
   console.log(
     'Proof status',
-    await universalVerifier.getProofStatus(ethSigner.getAddress(), requestId)
+    await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_MTP_VALIDATOR)
   );
 
   console.log('================= Mint erc20 airdrop ===============');
 
-  const erc20Verifier = new ethers.Contract(
-    ERC20_ZK_AIRDROP_ADDRESS,
-    ERC20LinkedUniversalVerifierAbi,
-    ethSigner
-  );
+  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
 
-  console.log('Balance before', await erc20Verifier.balanceOf(await ethSigner.getAddress()));
+  console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 
-  const mintTx = await erc20Verifier.mint(await ethSigner.getAddress());
+  const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
   await mintTx.wait();
 
   console.log('MintTx hash', mintTx.hash);
-  console.log('Balance after', await erc20Verifier.balanceOf(await ethSigner.getAddress()));
+  console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 }
 
 async function main(choice: string) {

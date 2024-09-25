@@ -1,4 +1,4 @@
-export const ERC20LinkedUniversalVerifierAbi = [
+export const Erc20AirdropAbi = [
   {
     inputs: [
       {
@@ -33,7 +33,7 @@ export const ERC20LinkedUniversalVerifierAbi = [
   }
 ];
 
-export const UniversalVerifierAbi = [
+export const Erc20VerifierAbi = [
   {
     inputs: [],
     name: 'InvalidInitialization',
@@ -98,146 +98,6 @@ export const UniversalVerifierAbi = [
     type: 'error'
   },
   {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: 'uint64',
-        name: 'version',
-        type: 'uint64'
-      }
-    ],
-    name: 'Initialized',
-    type: 'event'
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'previousOwner',
-        type: 'address'
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'newOwner',
-        type: 'address'
-      }
-    ],
-    name: 'OwnershipTransferStarted',
-    type: 'event'
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'previousOwner',
-        type: 'address'
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'newOwner',
-        type: 'address'
-      }
-    ],
-    name: 'OwnershipTransferred',
-    type: 'event'
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'uint64',
-        name: 'requestId',
-        type: 'uint64'
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'requestOwner',
-        type: 'address'
-      },
-      {
-        indexed: false,
-        internalType: 'string',
-        name: 'metadata',
-        type: 'string'
-      },
-      {
-        indexed: false,
-        internalType: 'address',
-        name: 'validator',
-        type: 'address'
-      },
-      {
-        indexed: false,
-        internalType: 'bytes',
-        name: 'data',
-        type: 'bytes'
-      }
-    ],
-    name: 'ZKPRequestSet',
-    type: 'event'
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: 'uint64',
-        name: 'requestId',
-        type: 'uint64'
-      },
-      {
-        indexed: true,
-        internalType: 'address',
-        name: 'caller',
-        type: 'address'
-      }
-    ],
-    name: 'ZKPResponseSubmitted',
-    type: 'event'
-  },
-  {
-    inputs: [],
-    name: 'REQUESTS_RETURN_LIMIT',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256'
-      }
-    ],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [],
-    name: 'VERSION',
-    outputs: [
-      {
-        internalType: 'string',
-        name: '',
-        type: 'string'
-      }
-    ],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [],
-    name: 'acceptOwnership',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function'
-  },
-  {
     inputs: [
       {
         internalType: 'contract ICircuitValidator',
@@ -246,32 +106,6 @@ export const UniversalVerifierAbi = [
       }
     ],
     name: 'addValidatorToWhitelist',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint64',
-        name: 'requestId',
-        type: 'uint64'
-      }
-    ],
-    name: 'disableZKPRequest',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint64',
-        name: 'requestId',
-        type: 'uint64'
-      }
-    ],
-    name: 'enableZKPRequest',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function'
@@ -317,35 +151,6 @@ export const UniversalVerifierAbi = [
         internalType: 'struct IZKPVerifier.ProofStatus',
         name: '',
         type: 'tuple'
-      }
-    ],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'user',
-        type: 'address'
-      },
-      {
-        internalType: 'uint64',
-        name: 'requestId',
-        type: 'uint64'
-      },
-      {
-        internalType: 'string',
-        name: 'key',
-        type: 'string'
-      }
-    ],
-    name: 'getProofStorageField',
-    outputs: [
-      {
-        internalType: 'uint256',
-        name: '',
-        type: 'uint256'
       }
     ],
     stateMutability: 'view',
@@ -461,13 +266,6 @@ export const UniversalVerifierAbi = [
     type: 'function'
   },
   {
-    inputs: [],
-    name: 'initialize',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function'
-  },
-  {
     inputs: [
       {
         internalType: 'address',
@@ -489,127 +287,6 @@ export const UniversalVerifierAbi = [
       }
     ],
     stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'contract ICircuitValidator',
-        name: 'validator',
-        type: 'address'
-      }
-    ],
-    name: 'isWhitelistedValidator',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool'
-      }
-    ],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint64',
-        name: 'requestId',
-        type: 'uint64'
-      }
-    ],
-    name: 'isZKPRequestEnabled',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool'
-      }
-    ],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [],
-    name: 'owner',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address'
-      }
-    ],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [],
-    name: 'pendingOwner',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '',
-        type: 'address'
-      }
-    ],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'contract ICircuitValidator',
-        name: 'validator',
-        type: 'address'
-      }
-    ],
-    name: 'removeValidatorFromWhitelist',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function'
-  },
-  {
-    inputs: [],
-    name: 'renounceOwnership',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint64',
-        name: 'requestId',
-        type: 'uint64'
-      }
-    ],
-    name: 'requestIdExists',
-    outputs: [
-      {
-        internalType: 'bool',
-        name: '',
-        type: 'bool'
-      }
-    ],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint64',
-        name: 'requestId',
-        type: 'uint64'
-      },
-      {
-        internalType: 'address',
-        name: 'requestOwner',
-        type: 'address'
-      }
-    ],
-    name: 'setRequestOwner',
-    outputs: [],
-    stateMutability: 'nonpayable',
     type: 'function'
   },
   {
@@ -678,106 +355,6 @@ export const UniversalVerifierAbi = [
     name: 'submitZKPResponse',
     outputs: [],
     stateMutability: 'nonpayable',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'newOwner',
-        type: 'address'
-      }
-    ],
-    name: 'transferOwnership',
-    outputs: [],
-    stateMutability: 'nonpayable',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'address',
-        name: 'sender',
-        type: 'address'
-      },
-      {
-        internalType: 'uint64[]',
-        name: 'requestIds',
-        type: 'uint64[]'
-      }
-    ],
-    name: 'verifyLinkedProofs',
-    outputs: [],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [
-      {
-        internalType: 'uint64',
-        name: 'requestId',
-        type: 'uint64'
-      },
-      {
-        internalType: 'uint256[]',
-        name: 'inputs',
-        type: 'uint256[]'
-      },
-      {
-        internalType: 'uint256[2]',
-        name: 'a',
-        type: 'uint256[2]'
-      },
-      {
-        internalType: 'uint256[2][2]',
-        name: 'b',
-        type: 'uint256[2][2]'
-      },
-      {
-        internalType: 'uint256[2]',
-        name: 'c',
-        type: 'uint256[2]'
-      },
-      {
-        internalType: 'address',
-        name: 'sender',
-        type: 'address'
-      }
-    ],
-    name: 'verifyZKPResponse',
-    outputs: [
-      {
-        components: [
-          {
-            internalType: 'string',
-            name: 'key',
-            type: 'string'
-          },
-          {
-            internalType: 'uint256',
-            name: 'inputIndex',
-            type: 'uint256'
-          }
-        ],
-        internalType: 'struct ICircuitValidator.KeyToInputIndex[]',
-        name: '',
-        type: 'tuple[]'
-      }
-    ],
-    stateMutability: 'view',
-    type: 'function'
-  },
-  {
-    inputs: [],
-    name: 'version',
-    outputs: [
-      {
-        internalType: 'string',
-        name: '',
-        type: 'string'
-      }
-    ],
-    stateMutability: 'pure',
     type: 'function'
   }
 ];
