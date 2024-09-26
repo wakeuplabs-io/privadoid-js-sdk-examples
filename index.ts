@@ -13,7 +13,8 @@ import {
   IdentityCreationOptions,
   ProofType,
   AuthorizationRequestMessageBody,
-  byteEncoder
+  byteEncoder,
+  buildVerifierId
 } from '@0xpolygonid/js-sdk';
 
 import {
@@ -25,37 +26,50 @@ import {
 } from './walletSetup';
 
 import { ethers, getBytes, hexlify } from 'ethers';
-import dotenv from 'dotenv';
 import { generateRequestData } from './request';
 import { Erc20AirdropAbi, Erc20VerifierAbi } from './abi';
-dotenv.config();
-
-const rhsUrl = process.env.RHS_URL as string;
-const walletKey = process.env.WALLET_KEY as string;
-
-// opt-sepolia example deployment
-const ERC20_VERIFIER_ADDRESS = '0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556'; // Universal Verifier (0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556) or ERC20 Verifier (0xE5012898489C708CF273E6CD0b935c0780a9DDB5)
-const ERC20_ZK_AIRDROP_ADDRESS = '0x76A9d02221f4142bbb5C07E50643cCbe0Ed6406C';
-const TRANSFER_REQUEST_ID_SIG_VALIDATOR = 1;
-const TRANSFER_REQUEST_ID_MTP_VALIDATOR = 2;
-const TRANSFER_REQUEST_ID_V3 = 10005;
+import 'dotenv/config';
 
 const OPID_METHOD = 'opid';
+const OPID_BLOCKCHAIN = 'optimism';
+const OPID_CHAIN_ID_MAIN = 10;
+const OPID_CHAIN_ID_SEPOLIA = 11155420;
+const OPID_NETWORK_MAIN = 'main';
+const OPID_NETWORK_SEPOLIA = 'sepolia';
+
 core.registerDidMethod(OPID_METHOD, 0b00000011);
 core.registerDidMethodNetwork({
   method: OPID_METHOD,
-  blockchain: 'optimism',
-  chainId: 11155420,
-  network: 'sepolia',
+  blockchain: OPID_BLOCKCHAIN,
+  chainId: OPID_CHAIN_ID_SEPOLIA,
+  network: OPID_NETWORK_SEPOLIA,
   networkFlag: 0b1000_0000 | 0b0000_0010
 });
 core.registerDidMethodNetwork({
   method: OPID_METHOD,
-  blockchain: 'optimism',
-  chainId: 10,
-  network: 'main',
+  blockchain: OPID_BLOCKCHAIN,
+  chainId: OPID_CHAIN_ID_MAIN,
+  network: OPID_NETWORK_MAIN,
   networkFlag: 0b1000_0000 | 0b0000_0001
 });
+
+const rhsUrl = process.env.RHS_URL as string;
+const walletKey = process.env.WALLET_KEY as string;
+
+const TRANSFER_REQUEST_ID_SIG_VALIDATOR = 1;
+const TRANSFER_REQUEST_ID_MTP_VALIDATOR = 2;
+const TRANSFER_REQUEST_ID_V3 = 3;
+
+// opt-sepolia example deployment
+const ERC20_VERIFIER_ADDRESS = '0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556'; // Universal Verifier (0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556) or ERC20 Verifier (0xE5012898489C708CF273E6CD0b935c0780a9DDB5)
+const ERC20_ZK_AIRDROP_ADDRESS = '0x76A9d02221f4142bbb5C07E50643cCbe0Ed6406C';
+
+const erc20VerifierId = buildVerifierId(ERC20_VERIFIER_ADDRESS, {
+  blockchain: OPID_BLOCKCHAIN,
+  networkId: OPID_NETWORK_SEPOLIA,
+  method: OPID_METHOD
+});
+const erc20VerifierDid = core.DID.parseFromId(erc20VerifierId);
 
 const defaultNetworkConnection = {
   rpcUrl: process.env.RPC_URL as string,
@@ -1447,12 +1461,6 @@ async function submitV3ZkResponse(useMongoStore = false) {
       id: TRANSFER_REQUEST_ID_V3,
       circuitId: CircuitId.AtomicQueryV3OnChain,
       optional: false,
-      params: {
-        nullifierSessionId: 0,
-        verifierDid: core.DID.parse(
-          'did:opid:optimism:sepolia:46wEFsLG5vRnNethrkErLN99tqsJKosRVo3J8gukbU'
-        )
-      },
       query: {
         allowedIssuers: ['*'],
         context:
@@ -1461,13 +1469,15 @@ async function submitV3ZkResponse(useMongoStore = false) {
         type: 'KYCAgeCredential',
         proofType: 0,
         skipClaimRevocationCheck: false
+      },
+      params: {
+        nullifierSessionId: 0,
+        verifierDid: erc20VerifierDid
       }
     },
     userDID,
     {
-      verifierDid: core.DID.parse(
-        'did:opid:optimism:sepolia:46wEFsLG5vRnNethrkErLN99tqsJKosRVo3J8gukbU'
-      ),
+      verifierDid: erc20VerifierDid,
       challenge: generateChallenge(await ethSigner.getAddress()),
       skipRevocation: false
     }
@@ -1483,9 +1493,9 @@ async function submitV3ZkResponse(useMongoStore = false) {
 
   const erc20Verifier = new ethers.Contract(ERC20_VERIFIER_ADDRESS, Erc20VerifierAbi, ethSigner);
 
-  console.log('ZKPRequest', await erc20Verifier.getZKPRequest(10005));
+  console.log('ZKPRequest', await erc20Verifier.getZKPRequest(TRANSFER_REQUEST_ID_V3));
 
-  const status = await erc20Verifier.getProofStatus(ethSigner.getAddress(), 10005);
+  const status = await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_V3);
   console.log('Proof status', status.isVerified);
 
   if (status.isVerified) {
@@ -1496,19 +1506,8 @@ async function submitV3ZkResponse(useMongoStore = false) {
 
   const { inputs, pi_a, pi_b, pi_c } = prepareInputs({ proof, pub_signals });
 
-  console.log(
-    'Inputs',
-    JSON.stringify({
-      TRANSFER_REQUEST_ID_SIG_VALIDATOR,
-      inputs,
-      pi_a,
-      pi_b,
-      pi_c
-    })
-  );
-
   const submitZkpResponseTx = await erc20Verifier.submitZKPResponse(
-    10005,
+    TRANSFER_REQUEST_ID_V3,
     inputs,
     pi_a,
     pi_b,
@@ -1520,7 +1519,10 @@ async function submitV3ZkResponse(useMongoStore = false) {
 
   console.log('================= Get request status ===============');
 
-  console.log('Proof status', await erc20Verifier.getProofStatus(ethSigner.getAddress(), 10005));
+  console.log(
+    'Proof status',
+    await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_V3)
+  );
 
   console.log('================= Mint erc20 airdrop ===============');
 
