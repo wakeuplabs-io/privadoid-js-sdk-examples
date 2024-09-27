@@ -13,7 +13,8 @@ import {
   IdentityCreationOptions,
   ProofType,
   AuthorizationRequestMessageBody,
-  byteEncoder
+  byteEncoder,
+  buildVerifierId
 } from '@0xpolygonid/js-sdk';
 
 import {
@@ -25,36 +26,50 @@ import {
 } from './walletSetup';
 
 import { ethers, getBytes, hexlify } from 'ethers';
-import dotenv from 'dotenv';
 import { generateRequestData } from './request';
 import { Erc20AirdropAbi, Erc20VerifierAbi } from './abi';
-dotenv.config();
-
-const rhsUrl = process.env.RHS_URL as string;
-const walletKey = process.env.WALLET_KEY as string;
-
-// opt-sepolia example deployment
-const ERC20_VERIFIER_ADDRESS = '0xE5012898489C708CF273E6CD0b935c0780a9DDB5'; // Universal Verifier (0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556) or ERC20 Verifier (0xE5012898489C708CF273E6CD0b935c0780a9DDB5)
-const ERC20_ZK_AIRDROP_ADDRESS = '0x76A9d02221f4142bbb5C07E50643cCbe0Ed6406C';
-const TRANSFER_REQUEST_ID_SIG_VALIDATOR = 1;
-const TRANSFER_REQUEST_ID_MTP_VALIDATOR = 2;
+import 'dotenv/config';
 
 const OPID_METHOD = 'opid';
+const OPID_BLOCKCHAIN = 'optimism';
+const OPID_CHAIN_ID_MAIN = 10;
+const OPID_CHAIN_ID_SEPOLIA = 11155420;
+const OPID_NETWORK_MAIN = 'main';
+const OPID_NETWORK_SEPOLIA = 'sepolia';
+
 core.registerDidMethod(OPID_METHOD, 0b00000011);
 core.registerDidMethodNetwork({
   method: OPID_METHOD,
-  blockchain: 'optimism',
-  chainId: 11155420,
-  network: 'sepolia',
+  blockchain: OPID_BLOCKCHAIN,
+  chainId: OPID_CHAIN_ID_SEPOLIA,
+  network: OPID_NETWORK_SEPOLIA,
   networkFlag: 0b1000_0000 | 0b0000_0010
 });
 core.registerDidMethodNetwork({
   method: OPID_METHOD,
-  blockchain: 'optimism',
-  chainId: 10,
-  network: 'main',
+  blockchain: OPID_BLOCKCHAIN,
+  chainId: OPID_CHAIN_ID_MAIN,
+  network: OPID_NETWORK_MAIN,
   networkFlag: 0b1000_0000 | 0b0000_0001
 });
+
+const rhsUrl = process.env.RHS_URL as string;
+const walletKey = process.env.WALLET_KEY as string;
+
+const TRANSFER_REQUEST_ID_SIG_VALIDATOR = 1;
+const TRANSFER_REQUEST_ID_MTP_VALIDATOR = 2;
+const TRANSFER_REQUEST_ID_V3 = 3;
+
+// opt-sepolia example deployment
+const ERC20_VERIFIER_ADDRESS = '0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556'; // Universal Verifier (0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556) or ERC20 Verifier (0xE5012898489C708CF273E6CD0b935c0780a9DDB5)
+const ERC20_ZK_AIRDROP_ADDRESS = '0x76A9d02221f4142bbb5C07E50643cCbe0Ed6406C';
+
+const erc20VerifierId = buildVerifierId(ERC20_VERIFIER_ADDRESS, {
+  blockchain: OPID_BLOCKCHAIN,
+  networkId: OPID_NETWORK_SEPOLIA,
+  method: OPID_METHOD
+});
+const erc20VerifierDid = core.DID.parseFromId(erc20VerifierId);
 
 const defaultNetworkConnection = {
   rpcUrl: process.env.RPC_URL as string,
@@ -1379,6 +1394,149 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
   console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 }
 
+async function submitV3ZkResponse(useMongoStore = false) {
+  let dataStorage, credentialWallet, identityWallet;
+  if (useMongoStore) {
+    ({ dataStorage, credentialWallet, identityWallet } = await initMongoDataStorageAndWallets(
+      defaultNetworkConnection
+    ));
+  } else {
+    ({ dataStorage, credentialWallet, identityWallet } = await initInMemoryDataStorageAndWallets(
+      defaultNetworkConnection
+    ));
+  }
+
+  const circuitStorage = await initCircuitStorage();
+  const proofService = await initProofService(
+    identityWallet,
+    credentialWallet,
+    dataStorage.states,
+    circuitStorage
+  );
+
+  const { did: userDID } = await identityWallet.createIdentity({
+    ...defaultIdentityCreationOptions
+  });
+
+  console.log('=============== user did ===============');
+  console.log(userDID.string());
+
+  const { did: issuerDID } = await identityWallet.createIdentity({
+    ...defaultIdentityCreationOptions
+  });
+
+  const credentialRequest = createKYCAgeCredential(userDID);
+  const credential = await identityWallet.issueCredential(issuerDID, credentialRequest);
+
+  await dataStorage.credential.saveCredential(credential);
+
+  console.log('================= generate Iden3SparseMerkleTreeProof =======================');
+
+  const res = await identityWallet.addCredentialsToMerkleTree([credential], issuerDID);
+
+  console.log('================= push states to rhs ===================');
+
+  await identityWallet.publishRevocationInfoByCredentialStatusType(
+    issuerDID,
+    CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
+    { rhsUrl }
+  );
+
+  console.log('================= publish to blockchain ===================');
+
+  const ethSigner = new ethers.Wallet(walletKey, (dataStorage.states as EthStateStorage).provider);
+  const txId = await proofService.transitState(
+    issuerDID,
+    res.oldTreeState,
+    true,
+    dataStorage.states,
+    ethSigner
+  );
+  console.log(txId);
+
+  console.log('================= generate credentialAtomicQueryMTPV2OnChain ===================');
+
+  const { proof, pub_signals } = await proofService.generateProof(
+    {
+      id: TRANSFER_REQUEST_ID_V3,
+      circuitId: CircuitId.AtomicQueryV3OnChain,
+      optional: false,
+      query: {
+        allowedIssuers: ['*'],
+        context:
+          'https://raw.githubusercontent.com/iden3/claim-schema-vocab/main/schemas/json-ld/kyc-v3.json-ld',
+        credentialSubject: { birthday: { $lt: 20020101 } },
+        type: 'KYCAgeCredential',
+        proofType: 0,
+        skipClaimRevocationCheck: false
+      },
+      params: {
+        nullifierSessionId: 0,
+        verifierDid: erc20VerifierDid
+      }
+    },
+    userDID,
+    {
+      verifierDid: erc20VerifierDid,
+      challenge: generateChallenge(await ethSigner.getAddress()),
+      skipRevocation: false
+    }
+  );
+
+  const valid = await proofService.verifyProof(
+    { proof, pub_signals },
+    CircuitId.AtomicQueryV3OnChain
+  );
+  console.log('Proof ok: ', valid);
+
+  console.log('================= Get request status ===============');
+
+  const erc20Verifier = new ethers.Contract(ERC20_VERIFIER_ADDRESS, Erc20VerifierAbi, ethSigner);
+
+  console.log('ZKPRequest', await erc20Verifier.getZKPRequest(TRANSFER_REQUEST_ID_V3));
+
+  const status = await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_V3);
+  console.log('Proof status', status.isVerified);
+
+  if (status.isVerified) {
+    return console.log('Proof already verified');
+  }
+
+  console.log('================= Submit proof ===============');
+
+  const { inputs, pi_a, pi_b, pi_c } = prepareInputs({ proof, pub_signals });
+
+  const submitZkpResponseTx = await erc20Verifier.submitZKPResponse(
+    TRANSFER_REQUEST_ID_V3,
+    inputs,
+    pi_a,
+    pi_b,
+    pi_c
+  );
+  await submitZkpResponseTx.wait();
+
+  console.log('Submit ZKPResponse tx hash', submitZkpResponseTx.hash);
+
+  console.log('================= Get request status ===============');
+
+  console.log(
+    'Proof status',
+    await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_V3)
+  );
+
+  console.log('================= Mint erc20 airdrop ===============');
+
+  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+
+  console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+
+  const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
+  await mintTx.wait();
+
+  console.log('MintTx hash', mintTx.hash);
+  console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+}
+
 async function main(choice: string) {
   switch (choice) {
     case 'identityCreation':
@@ -1425,6 +1583,9 @@ async function main(choice: string) {
       break;
     case 'submitMtpV2ZkResponse':
       await submitMtpV2ZkResponse();
+      break;
+    case 'submitV3ZkResponse':
+      await submitV3ZkResponse();
       break;
 
     default:
