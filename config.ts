@@ -68,3 +68,6 @@ export const DEFAULT_IDENTITY_CREATION_OPTIONS: IdentityCreationOptions = {
     id: RHS_URL
   }
 };
+
+export const CIRCUITS_FOLDER = process.env.CIRCUITS_PATH as string;
+export const MONGO_DB_CONNECTION = process.env.MONGO_DB_CONNECTION as string;

@@ -1112,32 +1112,9 @@ async function submitSigV2ZkResponse(useMongoStore = false) {
 
   await dataStorage.credential.saveCredential(credential);
 
-  console.log('================= generate Iden3SparseMerkleTreeProof =======================');
-
-  const res = await identityWallet.addCredentialsToMerkleTree([credential], issuerDID);
-
-  console.log('================= push states to rhs ===================');
-
-  await identityWallet.publishRevocationInfoByCredentialStatusType(
-    issuerDID,
-    CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
-    { rhsUrl: RHS_URL }
-  );
-
-  console.log('================= publish to blockchain ===================');
-
-  const ethSigner = new ethers.Wallet(WALLET_KEY, (dataStorage.states as EthStateStorage).provider);
-  const txId = await proofService.transitState(
-    issuerDID,
-    res.oldTreeState,
-    true,
-    dataStorage.states,
-    ethSigner
-  );
-  console.log(txId);
-
   console.log('================= generate credentialAtomicSigV2OnChain ===================');
 
+  const ethSigner = new ethers.Wallet(WALLET_KEY, (dataStorage.states as EthStateStorage).provider);
   const { proof, pub_signals } = await proofService.generateProof(
     {
       id: TRANSFER_REQUEST_ID_SIG_VALIDATOR,
@@ -1175,15 +1152,18 @@ async function submitSigV2ZkResponse(useMongoStore = false) {
     TRANSFER_REQUEST_ID_SIG_VALIDATOR
   );
   console.log('Proof status', status.isVerified);
-
   if (status.isVerified) {
     return console.log('Proof already verified');
   }
 
+  console.log('=============== Airdrop balance ===============');
+
+  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+  console.log('Balance before:', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+
   console.log('================= Submit proof ===============');
 
   const { inputs, pi_a, pi_b, pi_c } = prepareProofInputs({ proof, pub_signals });
-
   const submitZkpResponseTx = await erc20Verifier.submitZKPResponse(
     TRANSFER_REQUEST_ID_SIG_VALIDATOR,
     inputs,
@@ -1192,7 +1172,6 @@ async function submitSigV2ZkResponse(useMongoStore = false) {
     pi_c
   );
   await submitZkpResponseTx.wait();
-
   console.log('Submit ZKPResponse tx hash', submitZkpResponseTx.hash);
 
   console.log('================= Get request status ===============');
@@ -1205,16 +1184,13 @@ async function submitSigV2ZkResponse(useMongoStore = false) {
   if (ERC20_VERIFIER === VerifierType.Universal) {
     console.log('================= Mint erc20 airdrop ===============');
 
-    const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
-
-    console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
-
     const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
     await mintTx.wait();
-
     console.log('MintTx hash', mintTx.hash);
-    console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
   }
+
+  console.log('=============== Airdrop balance ===============');
+  console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 }
 
 async function submitMtpV2ZkResponse(useMongoStore = false) {

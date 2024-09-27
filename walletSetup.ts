@@ -51,9 +51,7 @@ dotenv.config();
 import { MongoDataSourceFactory, MerkleTreeMongodDBStorage } from '@0xpolygonid/mongo-storage';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db } from 'mongodb';
-
-const circuitsFolder = process.env.CIRCUITS_PATH as string;
-const mongoDbConnection = process.env.MONGO_DB_CONNECTION as string;
+import { CIRCUITS_FOLDER, MONGO_DB_CONNECTION } from './config';
 
 export function initInMemoryDataStorage({
   contractAddress,
@@ -91,7 +89,7 @@ export async function initMongoDataStorage({
   contractAddress: string;
   rpcUrl: string;
 }): Promise<IDataStorage> {
-  let url = mongoDbConnection;
+  let url = MONGO_DB_CONNECTION;
   if (!url) {
     const mongodb = await MongoMemoryServer.create();
     url = mongodb.getUri();
@@ -191,7 +189,7 @@ export async function initCredentialWallet(dataStorage: IDataStorage): Promise<C
 
 export async function initCircuitStorage(): Promise<ICircuitStorage> {
   return new FSCircuitStorage({
-    dirname: path.join(__dirname, circuitsFolder)
+    dirname: path.join(__dirname, CIRCUITS_FOLDER)
   });
 }
 export async function initProofService(
