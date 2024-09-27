@@ -35,8 +35,13 @@ export const TRANSFER_REQUEST_ID_SIG_VALIDATOR = 1;
 export const TRANSFER_REQUEST_ID_MTP_VALIDATOR = 2;
 export const TRANSFER_REQUEST_ID_V3 = 3;
 
-export const ERC20_VERIFIER: 'UniversalVerifier' | 'ERC20Verifier' | 'SelectiveDisclosureVerifier' =
-  'ERC20Verifier';
+export enum VerifierType {
+  Universal = 'UniversalVerifier',
+  ERC20 = 'ERC20Verifier',
+  SelectiveDisclosure = 'SelectiveDisclosureVerifier'
+}
+
+export const ERC20_VERIFIER: VerifierType = VerifierType.ERC20;
 
 // opt-sepolia example deployment
 export const ERC20_VERIFIER_ADDRESS = '0xca6bfa62791d3c7c7ed1a5b320018c1C1dAC89Ee'; // Universal Verifier (0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556) or ERC20 Verifier (0xca6bfa62791d3c7c7ed1a5b320018c1C1dAC89Ee)  or SelectiveDisclosureVerifier (0x9B786F6218FFF6d9742f22426cF4bDDC6F8cb9f8)

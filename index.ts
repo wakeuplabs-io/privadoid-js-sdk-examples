@@ -34,7 +34,8 @@ import {
   TRANSFER_REQUEST_ID_MTP_VALIDATOR,
   TRANSFER_REQUEST_ID_SIG_VALIDATOR,
   TRANSFER_REQUEST_ID_V3,
-  WALLET_KEY
+  WALLET_KEY,
+  VerifierType
 } from './config';
 
 function createKYCAgeCredential(did: core.DID) {
@@ -1201,7 +1202,7 @@ async function submitSigV2ZkResponse(useMongoStore = false) {
     await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_SIG_VALIDATOR)
   );
 
-  if (ERC20_VERIFIER === 'UniversalVerifier') {
+  if (ERC20_VERIFIER === VerifierType.Universal) {
     console.log('================= Mint erc20 airdrop ===============');
 
     const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
@@ -1356,7 +1357,7 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
     await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_MTP_VALIDATOR)
   );
 
-  if (ERC20_VERIFIER === 'UniversalVerifier') {
+  if (ERC20_VERIFIER === VerifierType.Universal) {
     console.log('================= Mint erc20 airdrop ===============');
 
     const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
@@ -1501,17 +1502,18 @@ async function submitV3ZkResponse(useMongoStore = false) {
     await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_V3)
   );
 
-  console.log('================= Mint erc20 airdrop ===============');
+  if (ERC20_VERIFIER === VerifierType.Universal) {
+    console.log('================= Mint erc20 airdrop ===============');
 
-  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+    const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+    console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 
-  console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+    const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
+    await mintTx.wait();
 
-  const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
-  await mintTx.wait();
-
-  console.log('MintTx hash', mintTx.hash);
-  console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+    console.log('MintTx hash', mintTx.hash);
+    console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+  }
 }
 
 async function submitV3SelectiveDisclosureZkResponse(useMongoStore = false) {
@@ -1644,17 +1646,18 @@ async function submitV3SelectiveDisclosureZkResponse(useMongoStore = false) {
     await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_V3)
   );
 
-  console.log('================= Mint erc20 airdrop ===============');
+  if (ERC20_VERIFIER === VerifierType.Universal) {
+    console.log('================= Mint erc20 airdrop ===============');
 
-  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+    const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+    console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 
-  console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+    const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
+    await mintTx.wait();
 
-  const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
-  await mintTx.wait();
-
-  console.log('MintTx hash', mintTx.hash);
-  console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+    console.log('MintTx hash', mintTx.hash);
+    console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+  }
 }
 
 async function main(choice: string) {
