@@ -24,15 +24,22 @@ import {
   initMongoDataStorageAndWallets
 } from './walletSetup';
 
-import { ethers } from 'ethers';
+import { ethers, getBytes, hexlify } from 'ethers';
 import dotenv from 'dotenv';
 import { generateRequestData } from './request';
+import { Erc20AirdropAbi, Erc20VerifierAbi } from './abi';
 dotenv.config();
 
 const rhsUrl = process.env.RHS_URL as string;
 const walletKey = process.env.WALLET_KEY as string;
-const OPID_METHOD = 'opid';
 
+// opt-sepolia example deployment
+const ERC20_VERIFIER_ADDRESS = '0xE5012898489C708CF273E6CD0b935c0780a9DDB5'; // Universal Verifier (0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556) or ERC20 Verifier (0xE5012898489C708CF273E6CD0b935c0780a9DDB5)
+const ERC20_ZK_AIRDROP_ADDRESS = '0x76A9d02221f4142bbb5C07E50643cCbe0Ed6406C';
+const TRANSFER_REQUEST_ID_SIG_VALIDATOR = 1;
+const TRANSFER_REQUEST_ID_MTP_VALIDATOR = 2;
+
+const OPID_METHOD = 'opid';
 core.registerDidMethod(OPID_METHOD, 0b00000011);
 core.registerDidMethodNetwork({
   method: OPID_METHOD,
@@ -131,6 +138,72 @@ function createKYCAgeCredentialRequest(
   }
 }
 
+function prepareInputs(json: { proof: any; pub_signals: string[] }): {
+  inputs: string[];
+  pi_a: string[];
+  pi_b: string[][];
+  pi_c: string[];
+} {
+  const { proof, pub_signals } = json;
+  const { pi_a, pi_b, pi_c } = proof;
+  const [[p1, p2], [p3, p4]] = pi_b;
+  const preparedProof = {
+    pi_a: pi_a.slice(0, 2),
+    pi_b: [
+      [p2, p1],
+      [p4, p3]
+    ],
+    pi_c: pi_c.slice(0, 2)
+  };
+
+  return { inputs: pub_signals, ...preparedProof };
+}
+
+function generateChallenge(address: string): bigint {
+  function padRightToUint256(bytes: Uint8Array) {
+    const paddedBytes = new Uint8Array(32);
+    paddedBytes.set(bytes, 0);
+    return BigInt(hexlify(paddedBytes));
+  }
+
+  function reverseUint256(input: bigint) {
+    // mask to restrict to 256 bits
+    const MASK_256 = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF');
+    let v = BigInt(input);
+
+    // Swap bytes
+    v =
+      ((v & BigInt('0xFF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00')) >> 8n) |
+      ((v & BigInt('0x00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF00FF')) << 8n);
+    v &= MASK_256;
+
+    // Swap 2-byte long pairs
+    v =
+      ((v & BigInt('0xFFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000')) >> 16n) |
+      ((v & BigInt('0x0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF0000FFFF')) << 16n);
+    v &= MASK_256;
+
+    // Swap 4-byte long pairs
+    v =
+      ((v & BigInt('0xFFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000')) >> 32n) |
+      ((v & BigInt('0x00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF00000000FFFFFFFF')) << 32n);
+    v &= MASK_256;
+
+    // Swap 8-byte long pairs
+    v =
+      ((v & BigInt('0xFFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF0000000000000000')) >> 64n) |
+      ((v & BigInt('0x0000000000000000FFFFFFFFFFFFFFFF0000000000000000FFFFFFFFFFFFFFFF')) << 64n);
+    v &= MASK_256;
+
+    // Swap 16-byte long pairs
+    v = ((v >> 128n) | (v << 128n)) & MASK_256;
+
+    return v;
+  }
+
+  return reverseUint256(padRightToUint256(getBytes(address)));
+}
+
 async function identityCreation() {
   console.log('=============== key creation ===============');
 
@@ -141,6 +214,7 @@ async function identityCreation() {
 
   console.log('=============== did ===============');
   console.log(did.string());
+
   console.log('=============== Auth BJJ credential ===============');
   console.log(JSON.stringify(credential));
 }
@@ -1027,6 +1101,284 @@ async function handleAuthRequestV3CircuitsBetaStateTransition() {
   console.log(JSON.stringify(authHandlerRequest, null, 2));
 }
 
+async function submitSigV2ZkResponse(useMongoStore = false) {
+  let dataStorage, credentialWallet, identityWallet;
+  if (useMongoStore) {
+    ({ dataStorage, credentialWallet, identityWallet } = await initMongoDataStorageAndWallets(
+      defaultNetworkConnection
+    ));
+  } else {
+    ({ dataStorage, credentialWallet, identityWallet } = await initInMemoryDataStorageAndWallets(
+      defaultNetworkConnection
+    ));
+  }
+
+  const circuitStorage = await initCircuitStorage();
+  const proofService = await initProofService(
+    identityWallet,
+    credentialWallet,
+    dataStorage.states,
+    circuitStorage
+  );
+
+  const { did: userDID } = await identityWallet.createIdentity({
+    ...defaultIdentityCreationOptions
+  });
+
+  console.log('=============== user did ===============');
+  console.log(userDID.string());
+
+  const { did: issuerDID } = await identityWallet.createIdentity({
+    ...defaultIdentityCreationOptions
+  });
+
+  const credentialRequest = createKYCAgeCredential(userDID);
+  const credential = await identityWallet.issueCredential(issuerDID, credentialRequest);
+
+  await dataStorage.credential.saveCredential(credential);
+
+  console.log('================= generate Iden3SparseMerkleTreeProof =======================');
+
+  const res = await identityWallet.addCredentialsToMerkleTree([credential], issuerDID);
+
+  console.log('================= push states to rhs ===================');
+
+  await identityWallet.publishRevocationInfoByCredentialStatusType(
+    issuerDID,
+    CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
+    { rhsUrl }
+  );
+
+  console.log('================= publish to blockchain ===================');
+
+  const ethSigner = new ethers.Wallet(walletKey, (dataStorage.states as EthStateStorage).provider);
+  const txId = await proofService.transitState(
+    issuerDID,
+    res.oldTreeState,
+    true,
+    dataStorage.states,
+    ethSigner
+  );
+  console.log(txId);
+
+  console.log('================= generate credentialAtomicSigV2OnChain ===================');
+
+  const { proof, pub_signals } = await proofService.generateProof(
+    {
+      id: TRANSFER_REQUEST_ID_SIG_VALIDATOR,
+      circuitId: CircuitId.AtomicQuerySigV2OnChain,
+      optional: false,
+      query: {
+        allowedIssuers: ['*'],
+        context:
+          'https://raw.githubusercontent.com/iden3/claim-schema-vocab/main/schemas/json-ld/kyc-v3.json-ld',
+        credentialSubject: { birthday: { $lt: 20020101 } },
+        type: 'KYCAgeCredential'
+      }
+    },
+    userDID,
+    {
+      challenge: generateChallenge(await ethSigner.getAddress()),
+      skipRevocation: false
+    }
+  );
+
+  const valid = await proofService.verifyProof(
+    { proof, pub_signals },
+    CircuitId.AtomicQuerySigV2OnChain
+  );
+  console.log('Proof ok: ', valid);
+
+  console.log('================= Get request status ===============');
+
+  const erc20Verifier = new ethers.Contract(ERC20_VERIFIER_ADDRESS, Erc20VerifierAbi, ethSigner);
+
+  console.log('ZKPRequest', await erc20Verifier.getZKPRequest(TRANSFER_REQUEST_ID_SIG_VALIDATOR));
+
+  const status = await erc20Verifier.getProofStatus(
+    ethSigner.getAddress(),
+    TRANSFER_REQUEST_ID_SIG_VALIDATOR
+  );
+  console.log('Proof status', status.isVerified);
+
+  if (status.isVerified) {
+    return console.log('Proof already verified');
+  }
+
+  console.log('================= Submit proof ===============');
+
+  const { inputs, pi_a, pi_b, pi_c } = prepareInputs({ proof, pub_signals });
+
+  const submitZkpResponseTx = await erc20Verifier.submitZKPResponse(
+    TRANSFER_REQUEST_ID_SIG_VALIDATOR,
+    inputs,
+    pi_a,
+    pi_b,
+    pi_c
+  );
+  await submitZkpResponseTx.wait();
+
+  console.log('Submit ZKPResponse tx hash', submitZkpResponseTx.hash);
+
+  console.log('================= Get request status ===============');
+
+  console.log(
+    'Proof status',
+    await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_SIG_VALIDATOR)
+  );
+
+  console.log('================= Mint erc20 airdrop ===============');
+
+  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+
+  console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+
+  const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
+  await mintTx.wait();
+
+  console.log('MintTx hash', mintTx.hash);
+  console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+}
+
+async function submitMtpV2ZkResponse(useMongoStore = false) {
+  let dataStorage, credentialWallet, identityWallet;
+  if (useMongoStore) {
+    ({ dataStorage, credentialWallet, identityWallet } = await initMongoDataStorageAndWallets(
+      defaultNetworkConnection
+    ));
+  } else {
+    ({ dataStorage, credentialWallet, identityWallet } = await initInMemoryDataStorageAndWallets(
+      defaultNetworkConnection
+    ));
+  }
+
+  const circuitStorage = await initCircuitStorage();
+  const proofService = await initProofService(
+    identityWallet,
+    credentialWallet,
+    dataStorage.states,
+    circuitStorage
+  );
+
+  const { did: userDID } = await identityWallet.createIdentity({
+    ...defaultIdentityCreationOptions
+  });
+
+  console.log('=============== user did ===============');
+  console.log(userDID.string());
+
+  const { did: issuerDID } = await identityWallet.createIdentity({
+    ...defaultIdentityCreationOptions
+  });
+
+  const credentialRequest = createKYCAgeCredential(userDID);
+  const credential = await identityWallet.issueCredential(issuerDID, credentialRequest);
+
+  await dataStorage.credential.saveCredential(credential);
+
+  console.log('================= generate Iden3SparseMerkleTreeProof =======================');
+
+  const res = await identityWallet.addCredentialsToMerkleTree([credential], issuerDID);
+
+  console.log('================= push states to rhs ===================');
+
+  await identityWallet.publishRevocationInfoByCredentialStatusType(
+    issuerDID,
+    CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
+    { rhsUrl }
+  );
+
+  console.log('================= publish to blockchain ===================');
+
+  const ethSigner = new ethers.Wallet(walletKey, (dataStorage.states as EthStateStorage).provider);
+  const txId = await proofService.transitState(
+    issuerDID,
+    res.oldTreeState,
+    true,
+    dataStorage.states,
+    ethSigner
+  );
+  console.log(txId);
+
+  console.log('================= generate credentialAtomicQueryMTPV2OnChain ===================');
+
+  const { proof, pub_signals } = await proofService.generateProof(
+    {
+      id: TRANSFER_REQUEST_ID_MTP_VALIDATOR,
+      circuitId: CircuitId.AtomicQueryMTPV2OnChain,
+      optional: false,
+      query: {
+        allowedIssuers: ['*'],
+        context:
+          'https://raw.githubusercontent.com/iden3/claim-schema-vocab/main/schemas/json-ld/kyc-v3.json-ld',
+        credentialSubject: { birthday: { $lt: 20020101 } },
+        type: 'KYCAgeCredential'
+      }
+    },
+    userDID,
+    {
+      challenge: generateChallenge(await ethSigner.getAddress()),
+      skipRevocation: false
+    }
+  );
+
+  const valid = await proofService.verifyProof(
+    { proof, pub_signals },
+    CircuitId.AtomicQueryMTPV2OnChain
+  );
+  console.log('Proof ok: ', valid);
+
+  console.log('================= Get request status ===============');
+
+  const erc20Verifier = new ethers.Contract(ERC20_VERIFIER_ADDRESS, Erc20VerifierAbi, ethSigner);
+
+  console.log('ZKPRequest', await erc20Verifier.getZKPRequest(TRANSFER_REQUEST_ID_MTP_VALIDATOR));
+
+  const status = await erc20Verifier.getProofStatus(
+    ethSigner.getAddress(),
+    TRANSFER_REQUEST_ID_MTP_VALIDATOR
+  );
+  console.log('Proof status', status.isVerified);
+
+  if (status.isVerified) {
+    return console.log('Proof already verified');
+  }
+
+  console.log('================= Submit proof ===============');
+
+  const { inputs, pi_a, pi_b, pi_c } = prepareInputs({ proof, pub_signals });
+
+  const submitZkpResponseTx = await erc20Verifier.submitZKPResponse(
+    TRANSFER_REQUEST_ID_MTP_VALIDATOR,
+    inputs,
+    pi_a,
+    pi_b,
+    pi_c
+  );
+  await submitZkpResponseTx.wait();
+
+  console.log('Submit ZKPResponse tx hash', submitZkpResponseTx.hash);
+
+  console.log('================= Get request status ===============');
+
+  console.log(
+    'Proof status',
+    await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_MTP_VALIDATOR)
+  );
+
+  console.log('================= Mint erc20 airdrop ===============');
+
+  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+
+  console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+
+  const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
+  await mintTx.wait();
+
+  console.log('MintTx hash', mintTx.hash);
+  console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+}
+
 async function main(choice: string) {
   switch (choice) {
     case 'identityCreation':
@@ -1062,13 +1414,17 @@ async function main(choice: string) {
     case 'handleAuthRequestMongo':
       await handleAuthRequest(true);
       break;
-
     case 'transitStateThirdPartyDID':
       await transitStateThirdPartyDID();
       break;
-
     case 'handleAuthRequestV3CircuitsBetaStateTransition':
       await handleAuthRequestV3CircuitsBetaStateTransition();
+      break;
+    case 'submitSigV2ZkResponse':
+      await submitSigV2ZkResponse();
+      break;
+    case 'submitMtpV2ZkResponse':
+      await submitMtpV2ZkResponse();
       break;
 
     default:
