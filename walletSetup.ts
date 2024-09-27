@@ -52,13 +52,13 @@ import { MongoDataSourceFactory, MerkleTreeMongodDBStorage } from '@0xpolygonid/
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db } from 'mongodb';
 import { ethers } from 'ethers';
-import { config } from './config';
+import { CIRCUITS_FOLDER, MONGO_DB_CONNECTION, RPC_URL, STATE_CONTRACT_ADDRESS, RHS_CHAIN_ID, MONGO_DB_TABLE_NAME, WALLET_KEY, RHS_ADDRESS } from './config';
 
 const conf: EthConnectionConfig = {
   ...defaultEthConnectionConfig,
-  contractAddress: config.stateContractAddress,
-  url: config.rpcUrl,
-  chainId: config.chainId
+  contractAddress: STATE_CONTRACT_ADDRESS,
+  url: RPC_URL,
+  chainId: RHS_CHAIN_ID
 };
 
 export function initInMemoryDataStorage(): IDataStorage {
@@ -81,14 +81,14 @@ export function initInMemoryDataStorage(): IDataStorage {
 }
 
 export async function initMongoDataStorage(): Promise<IDataStorage> {
-  let url = config.mongoConnString;
+  let url = MONGO_DB_CONNECTION;
   if (!url) {
     const mongodb = await MongoMemoryServer.create();
     url = mongodb.getUri();
   }
   const client = new MongoClient(url);
   await client.connect();
-  const db: Db = client.db(config.mongoTableName);
+  const db: Db = client.db(MONGO_DB_TABLE_NAME);
 
   const dataStorage = {
     credential: new CredentialStorage(
@@ -119,13 +119,13 @@ export async function initIdentityWallet(
     CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
     new Iden3SmtRhsCredentialStatusPublisher()
   );
-  if (!config.walletKey) throw new Error('wallet key not configured');
-  const ethSigner = new ethers.Wallet(config.walletKey, dataStorage.states.getRpcProvider());
-  if (config.rhsAddress)
+  if (!WALLET_KEY) throw new Error('wallet key not configured');
+  const ethSigner = new ethers.Wallet(WALLET_KEY, dataStorage.states.getRpcProvider());
+  if (RHS_ADDRESS)
     credentialStatusPublisherRegistry.register(
       CredentialStatusType.Iden3OnchainSparseMerkleTreeProof2023,
       new Iden3OnchainSmtCredentialStatusPublisher(
-        new OnChainRevocationStorage(conf, config.rhsAddress, ethSigner)
+        new OnChainRevocationStorage(conf, RHS_ADDRESS, ethSigner)
       )
     );
 
@@ -180,7 +180,7 @@ export async function initCredentialWallet(dataStorage: IDataStorage): Promise<C
 
 export async function initCircuitStorage(): Promise<ICircuitStorage> {
   return new FSCircuitStorage({
-    dirname: path.join(__dirname, config.circuitsFolder)
+    dirname: path.join(__dirname, CIRCUITS_FOLDER)
   });
 }
 export async function initProofService(
