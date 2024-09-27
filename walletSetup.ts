@@ -119,16 +119,13 @@ export async function initIdentityWallet(
     CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
     new Iden3SmtRhsCredentialStatusPublisher()
   );
-  if (!process.env.WALLET_KEY) throw new Error('wallet key not configured');
-  const ethSigner = new ethers.Wallet(
-    process.env.WALLET_KEY!,
-    dataStorage.states.getRpcProvider()
-  );
-  if (process.env.RHS_URL?.startsWith('0x'))
+  if (!config.walletKey) throw new Error('wallet key not configured');
+  const ethSigner = new ethers.Wallet(config.walletKey, dataStorage.states.getRpcProvider());
+  if (config.rhsAddress)
     credentialStatusPublisherRegistry.register(
       CredentialStatusType.Iden3OnchainSparseMerkleTreeProof2023,
       new Iden3OnchainSmtCredentialStatusPublisher(
-        new OnChainRevocationStorage(conf, process.env.RHS_URL!, ethSigner)
+        new OnChainRevocationStorage(conf, config.rhsAddress, ethSigner)
       )
     );
 

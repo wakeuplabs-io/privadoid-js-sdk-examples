@@ -1,4 +1,4 @@
-import { byteEncoder, createSchemaHash } from '@0xpolygonid/js-sdk';
+import { byteEncoder, calculateCoreSchemaHash } from '@wakeuplabs/opid-sdk';
 import { Path, getDocumentLoader, Merklizer } from '@iden3/js-jsonld-merklization';
 
 const pathToCredentialSubject = 'https://www.w3.org/2018/credentials#credentialSubject';
@@ -13,7 +13,7 @@ export async function generateRequestData() {
   const ldJSONStr = JSON.stringify(ldCtx);
   // const ldBytes = byteEncoder.encode(ldJSONStr);
   const typeId = await Path.getTypeIDFromContext(ldJSONStr, type);
-  const schemaHash = createSchemaHash(byteEncoder.encode(typeId));
+  const schemaHash = calculateCoreSchemaHash(byteEncoder.encode(typeId));
   console.log('schemaId', schemaHash.bigInt().toString());
 
   // you can use custom IPFS
