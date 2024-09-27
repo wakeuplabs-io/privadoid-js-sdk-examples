@@ -1309,11 +1309,14 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
     return console.log('Proof already verified');
   }
 
+  console.log('=============== Airdrop balance ===============');
+
+  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+  console.log('Balance before:', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+
   console.log('================= Submit proof ===============');
 
   const { inputs, pi_a, pi_b, pi_c } = prepareProofInputs({ proof, pub_signals });
-
-  console.log('inputs', TRANSFER_REQUEST_ID_MTP_VALIDATOR, inputs, pi_a, pi_b, pi_c);
 
   const submitZkpResponseTx = await erc20Verifier.submitZKPResponse(
     TRANSFER_REQUEST_ID_MTP_VALIDATOR,
@@ -1323,7 +1326,6 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
     pi_c
   );
   await submitZkpResponseTx.wait();
-
   console.log('Submit ZKPResponse tx hash', submitZkpResponseTx.hash);
 
   console.log('================= Get request status ===============');
@@ -1336,16 +1338,14 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
   if (ERC20_VERIFIER === VerifierType.Universal) {
     console.log('================= Mint erc20 airdrop ===============');
 
-    const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
-
-    console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
-
     const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
     await mintTx.wait();
-
     console.log('MintTx hash', mintTx.hash);
-    console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
   }
+
+  console.log('=============== Airdrop balance ===============');
+
+  console.log('Balance after:', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 }
 
 async function submitV3ZkResponse(useMongoStore = false) {
@@ -1456,6 +1456,11 @@ async function submitV3ZkResponse(useMongoStore = false) {
     return console.log('Proof already verified');
   }
 
+  console.log('=============== Airdrop balance ===============');
+
+  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+  console.log('Balance before:', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+
   console.log('================= Submit proof ===============');
 
   const { inputs, pi_a, pi_b, pi_c } = prepareProofInputs({ proof, pub_signals });
@@ -1481,18 +1486,21 @@ async function submitV3ZkResponse(useMongoStore = false) {
   if (ERC20_VERIFIER === VerifierType.Universal) {
     console.log('================= Mint erc20 airdrop ===============');
 
-    const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
-    console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
-
     const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
     await mintTx.wait();
-
     console.log('MintTx hash', mintTx.hash);
-    console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
   }
+
+  console.log('=============== Airdrop balance ===============');
+
+  console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 }
 
 async function submitV3SelectiveDisclosureZkResponse(useMongoStore = false) {
+  if (ERC20_VERIFIER !== VerifierType.SelectiveDisclosure) {
+    throw new Error('Verifier is not SelectiveDisclosure');
+  }
+
   let dataStorage, credentialWallet, identityWallet;
   if (useMongoStore) {
     ({ dataStorage, credentialWallet, identityWallet } = await initMongoDataStorageAndWallets(
@@ -1600,6 +1608,11 @@ async function submitV3SelectiveDisclosureZkResponse(useMongoStore = false) {
     return console.log('Proof already verified');
   }
 
+  console.log('=============== Airdrop balance ===============');
+
+  const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
+  console.log('Balance before:', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
+
   console.log('================= Submit proof ===============');
 
   const { inputs, pi_a, pi_b, pi_c } = prepareProofInputs({ proof, pub_signals });
@@ -1622,18 +1635,9 @@ async function submitV3SelectiveDisclosureZkResponse(useMongoStore = false) {
     await erc20Verifier.getProofStatus(ethSigner.getAddress(), TRANSFER_REQUEST_ID_V3)
   );
 
-  if (ERC20_VERIFIER === VerifierType.Universal) {
-    console.log('================= Mint erc20 airdrop ===============');
+  console.log('=============== Airdrop balance ===============');
 
-    const erc20Airdrop = new ethers.Contract(ERC20_ZK_AIRDROP_ADDRESS, Erc20AirdropAbi, ethSigner);
-    console.log('Balance before', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
-
-    const mintTx = await erc20Airdrop.mint(await ethSigner.getAddress());
-    await mintTx.wait();
-
-    console.log('MintTx hash', mintTx.hash);
-    console.log('Balance after', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
-  }
+  console.log('Balance after:', await erc20Airdrop.balanceOf(await ethSigner.getAddress()));
 }
 
 async function main(choice: string) {
