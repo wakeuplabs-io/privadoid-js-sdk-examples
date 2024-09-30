@@ -43,27 +43,25 @@ import {
   FSCircuitStorage,
   AbstractPrivateKeyStore,
   CredentialStatusPublisherRegistry,
-  Iden3SmtRhsCredentialStatusPublisher
-} from '@0xpolygonid/js-sdk';
+  Iden3SmtRhsCredentialStatusPublisher,
+  Iden3OnchainSmtCredentialStatusPublisher,
+  OnChainRevocationStorage
+} from '@wakeuplabs/opid-sdk';
 import path from 'path';
-import dotenv from 'dotenv';
-dotenv.config();
 import { MongoDataSourceFactory, MerkleTreeMongodDBStorage } from '@0xpolygonid/mongo-storage';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db } from 'mongodb';
-import { CIRCUITS_FOLDER, MONGO_DB_CONNECTION } from './config';
+import { ethers } from 'ethers';
+import { CIRCUITS_FOLDER, MONGO_DB_CONNECTION, RPC_URL, STATE_CONTRACT_ADDRESS, RHS_CHAIN_ID, MONGO_DB_TABLE_NAME, WALLET_KEY, RHS_ADDRESS } from './config';
 
-export function initInMemoryDataStorage({
-  contractAddress,
-  rpcUrl
-}: {
-  contractAddress: string;
-  rpcUrl: string;
-}): IDataStorage {
-  const conf: EthConnectionConfig = defaultEthConnectionConfig;
-  conf.contractAddress = contractAddress;
-  conf.url = rpcUrl;
+const conf: EthConnectionConfig = {
+  ...defaultEthConnectionConfig,
+  contractAddress: STATE_CONTRACT_ADDRESS,
+  url: RPC_URL,
+  chainId: RHS_CHAIN_ID
+};
 
+export function initInMemoryDataStorage(): IDataStorage {
   // change here priority fees in case transaction is stuck or processing too long
   // conf.maxPriorityFeePerGas = '250000000000' - 250 gwei
   // conf.maxFeePerGas = '250000000000' - 250 gwei
@@ -76,19 +74,13 @@ export function initInMemoryDataStorage({
     ),
     mt: new InMemoryMerkleTreeStorage(40),
 
-    states: new EthStateStorage(defaultEthConnectionConfig)
+    states: new EthStateStorage(conf)
   };
 
   return dataStorage;
 }
 
-export async function initMongoDataStorage({
-  rpcUrl,
-  contractAddress
-}: {
-  contractAddress: string;
-  rpcUrl: string;
-}): Promise<IDataStorage> {
+export async function initMongoDataStorage(): Promise<IDataStorage> {
   let url = MONGO_DB_CONNECTION;
   if (!url) {
     const mongodb = await MongoMemoryServer.create();
@@ -96,11 +88,7 @@ export async function initMongoDataStorage({
   }
   const client = new MongoClient(url);
   await client.connect();
-  const db: Db = client.db('mongodb-sdk-example');
-
-  const conf: EthConnectionConfig = defaultEthConnectionConfig;
-  conf.contractAddress = contractAddress;
-  conf.url = rpcUrl;
+  const db: Db = client.db(MONGO_DB_TABLE_NAME);
 
   const dataStorage = {
     credential: new CredentialStorage(
@@ -111,7 +99,7 @@ export async function initMongoDataStorage({
       await MongoDataSourceFactory<Profile>(db, 'profile')
     ),
     mt: await MerkleTreeMongodDBStorage.setup(db, 40),
-    states: new EthStateStorage(defaultEthConnectionConfig)
+    states: new EthStateStorage(conf)
   };
 
   return dataStorage as unknown as IDataStorage;
@@ -131,17 +119,23 @@ export async function initIdentityWallet(
     CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
     new Iden3SmtRhsCredentialStatusPublisher()
   );
+  if (!WALLET_KEY) throw new Error('wallet key not configured');
+  const ethSigner = new ethers.Wallet(WALLET_KEY, dataStorage.states.getRpcProvider());
+  if (RHS_ADDRESS)
+    credentialStatusPublisherRegistry.register(
+      CredentialStatusType.Iden3OnchainSparseMerkleTreeProof2023,
+      new Iden3OnchainSmtCredentialStatusPublisher(
+        new OnChainRevocationStorage(conf, RHS_ADDRESS, ethSigner)
+      )
+    );
 
   return new IdentityWallet(kms, dataStorage, credentialWallet, {
     credentialStatusPublisherRegistry
   });
 }
 
-export async function initInMemoryDataStorageAndWallets(config: {
-  contractAddress: string;
-  rpcUrl: string;
-}) {
-  const dataStorage = initInMemoryDataStorage(config);
+export async function initInMemoryDataStorageAndWallets() {
+  const dataStorage = initInMemoryDataStorage();
   const credentialWallet = await initCredentialWallet(dataStorage);
   const memoryKeyStore = new InMemoryPrivateKeyStore();
 
@@ -154,11 +148,9 @@ export async function initInMemoryDataStorageAndWallets(config: {
   };
 }
 
-export async function initMongoDataStorageAndWallets(config: {
-  contractAddress: string;
-  rpcUrl: string;
-}) {
-  const dataStorage = await initMongoDataStorage(config);
+//TODO: fix mongo data storage
+export async function initMongoDataStorageAndWallets() {
+  const dataStorage = await initMongoDataStorage();
   const credentialWallet = await initCredentialWallet(dataStorage);
   const memoryKeyStore = new InMemoryPrivateKeyStore();
 
@@ -180,7 +172,7 @@ export async function initCredentialWallet(dataStorage: IDataStorage): Promise<C
   );
   resolvers.register(
     CredentialStatusType.Iden3OnchainSparseMerkleTreeProof2023,
-    new OnChainResolver([defaultEthConnectionConfig])
+    new OnChainResolver([conf])
   );
   resolvers.register(CredentialStatusType.Iden3commRevocationStatusV1, new AgentResolver());
 

@@ -1,5 +1,5 @@
 {
-  "extends": ["@iden3/eslint-config"],
+  // "extends": ["@iden3/eslint-config"],
   "rules": {
     // no console.log
     "no-console": "off"

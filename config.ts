@@ -1,9 +1,11 @@
 import {
   buildVerifierId,
-  core,
-  CredentialStatusType,
-  IdentityCreationOptions
-} from '@0xpolygonid/js-sdk';
+  core, 
+  CredentialStatusType, 
+  IdentityCreationOptions 
+} from '@wakeuplabs/opid-sdk';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export const OPID_METHOD = 'opid';
 export const OPID_BLOCKCHAIN = 'optimism';
@@ -28,8 +30,15 @@ core.registerDidMethodNetwork({
   networkFlag: 0b1000_0000 | 0b0000_0001
 });
 
+
+export const STATE_CONTRACT_ADDRESS = process.env.STATE_CONTRACT_ADDRESS as string;
+export const RHS_CHAIN_ID = process.env.RHS_CHAIN_ID ? +process.env.RHS_CHAIN_ID : 0;
+export const RPC_URL = process.env.RPC_URL as string;
 export const RHS_URL = process.env.RHS_URL as string;
+export const RHS_ADDRESS = process.env.RHS_ADDRESS as string;
 export const WALLET_KEY = process.env.WALLET_KEY as string;
+export const THIRD_PARTY_WALLET_KEY = process.env.THIRD_PARTY_WALLET_KEY as string;
+export const VERIFIER_DID = process.env.VERIFIER_DID as string;
 
 export const TRANSFER_REQUEST_ID_SIG_VALIDATOR = 1;
 export const TRANSFER_REQUEST_ID_MTP_VALIDATOR = 2;
@@ -55,8 +64,8 @@ export const ERC20_VERIFIER_ID = buildVerifierId(ERC20_VERIFIER_ADDRESS, {
 export const ERC20_VERIFIER_DID = core.DID.parseFromId(ERC20_VERIFIER_ID);
 
 export const DEFAULT_NETWORK_CONNECTION = {
-  rpcUrl: process.env.RPC_URL as string,
-  contractAddress: process.env.CONTRACT_ADDRESS as string
+  rpcUrl: RPC_URL,
+  contractAddress: STATE_CONTRACT_ADDRESS
 };
 
 export const DEFAULT_IDENTITY_CREATION_OPTIONS: IdentityCreationOptions = {
@@ -71,3 +80,36 @@ export const DEFAULT_IDENTITY_CREATION_OPTIONS: IdentityCreationOptions = {
 
 export const CIRCUITS_FOLDER = process.env.CIRCUITS_PATH as string;
 export const MONGO_DB_CONNECTION = process.env.MONGO_DB_CONNECTION as string;
+export const MONGO_DB_TABLE_NAME = process.env.MONGO_DB_TABLE_NAME as string;
+
+
+export const ONCHAIN_RHS_CONFIG: {
+  credentialType: CredentialStatusType;
+  identityCreationOptions: IdentityCreationOptions;
+} = {
+  credentialType: CredentialStatusType.Iden3OnchainSparseMerkleTreeProof2023,
+  identityCreationOptions: {
+    method: OPID_METHOD,
+    blockchain: OPID_BLOCKCHAIN,
+    networkId: OPID_NETWORK_SEPOLIA,
+    revocationOpts: {
+      type: CredentialStatusType.Iden3OnchainSparseMerkleTreeProof2023,
+      id: RHS_ADDRESS
+    }
+  }
+};
+export const OFFCHAIN_RHS_CONFIG: {
+  credentialType: CredentialStatusType;
+  identityCreationOptions: IdentityCreationOptions;
+} = {
+  credentialType: CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
+  identityCreationOptions: {
+    method: OPID_METHOD,
+    blockchain: OPID_BLOCKCHAIN,
+    networkId: OPID_NETWORK_SEPOLIA,
+    revocationOpts: {
+      type: CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
+      id: RHS_URL
+    }
+  }
+};
