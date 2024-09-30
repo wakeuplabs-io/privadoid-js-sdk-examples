@@ -148,6 +148,7 @@ export async function initInMemoryDataStorageAndWallets() {
   };
 }
 
+//TODO: fix mongo data storage
 export async function initMongoDataStorageAndWallets() {
   const dataStorage = await initMongoDataStorage();
   const credentialWallet = await initCredentialWallet(dataStorage);

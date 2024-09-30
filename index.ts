@@ -37,7 +37,8 @@ import {
   TRANSFER_REQUEST_ID_V3,
   WALLET_KEY,
   VerifierType,
-  THIRD_PARTY_WALLET_KEY
+  THIRD_PARTY_WALLET_KEY,
+  VERIFIER_DID
 } from './config';
 import { OFFCHAIN_RHS_CONFIG, ONCHAIN_RHS_CONFIG } from './config';
 
@@ -632,13 +633,12 @@ async function handleAuthRequestWithProfiles() {
   );
 
   console.log('=================  credential auth request ===================');
-  const verifierDID = 'did:example:123#JUvpllMEYUZ2joO59UNui_XYDqxVqiFLLAJ8klWuPBw';
 
   const authRequest: AuthorizationRequestMessage = {
     id: 'fe6354fe-3db2-48c2-a779-e39c2dda8d90',
     thid: 'fe6354fe-3db2-48c2-a779-e39c2dda8d90',
     typ: PROTOCOL_CONSTANTS.MediaType.PlainMessage,
-    from: verifierDID,
+    from: VERIFIER_DID,
     type: PROTOCOL_CONSTANTS.PROTOCOL_MESSAGE_TYPE.AUTHORIZATION_REQUEST_MESSAGE_TYPE,
     body: {
       callbackUrl: 'http://testcallback.com',
@@ -748,13 +748,12 @@ async function handleAuthRequestWithProfilesV3CircuitBeta() {
   };
 
   console.log('=================  credential auth request ===================');
-  const verifierDID = 'did:opid:optimism:sepolia:46xjJV8kjidpy7Kb9BWzU3zwgqXLhJ4bsyVPyiLGyy';
 
   const authRequest: AuthorizationRequestMessage = {
     id: 'fe6354fe-3db2-48c2-a779-e39c2dda8d90',
     thid: 'fe6354fe-3db2-48c2-a779-e39c2dda8d90',
     typ: PROTOCOL_CONSTANTS.MediaType.PlainMessage,
-    from: verifierDID,
+    from: VERIFIER_DID,
     type: PROTOCOL_CONSTANTS.PROTOCOL_MESSAGE_TYPE.AUTHORIZATION_REQUEST_MESSAGE_TYPE,
     body: {
       callbackUrl: 'http://testcallback.com',
@@ -1680,8 +1679,8 @@ async function main(choice: string) {
       await handleAuthRequestWithProfilesV3CircuitBeta();
       await handleAuthRequestNoIssuerStateTransition();
       await generateRequestData();
-      await generateProofs(true);
-      await handleAuthRequest(true);
+      // await generateProofs(true);
+      // await handleAuthRequest(true);
       await handleAuthRequestV3CircuitsBetaStateTransition();
   }
 }

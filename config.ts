@@ -38,6 +38,7 @@ export const RHS_URL = process.env.RHS_URL as string;
 export const RHS_ADDRESS = process.env.RHS_ADDRESS as string;
 export const WALLET_KEY = process.env.WALLET_KEY as string;
 export const THIRD_PARTY_WALLET_KEY = process.env.THIRD_PARTY_WALLET_KEY as string;
+export const VERIFIER_DID = process.env.VERIFIER_DID as string;
 
 export const TRANSFER_REQUEST_ID_SIG_VALIDATOR = 1;
 export const TRANSFER_REQUEST_ID_MTP_VALIDATOR = 2;
@@ -89,8 +90,8 @@ export const ONCHAIN_RHS_CONFIG: {
   credentialType: CredentialStatusType.Iden3OnchainSparseMerkleTreeProof2023,
   identityCreationOptions: {
     method: OPID_METHOD,
-    blockchain: 'optimism',
-    networkId: 'sepolia',
+    blockchain: OPID_BLOCKCHAIN,
+    networkId: OPID_NETWORK_SEPOLIA,
     revocationOpts: {
       type: CredentialStatusType.Iden3OnchainSparseMerkleTreeProof2023,
       id: RHS_ADDRESS
@@ -104,11 +105,11 @@ export const OFFCHAIN_RHS_CONFIG: {
   credentialType: CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
   identityCreationOptions: {
     method: OPID_METHOD,
-    blockchain: 'optimism',
-    networkId: 'sepolia',
+    blockchain: OPID_BLOCKCHAIN,
+    networkId: OPID_NETWORK_SEPOLIA,
     revocationOpts: {
       type: CredentialStatusType.Iden3ReverseSparseMerkleTreeProof,
-      id: RHS_ADDRESS
+      id: RHS_URL
     }
   }
 };
