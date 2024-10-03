@@ -41,6 +41,7 @@ import {
   VERIFIER_DID
 } from './config';
 import { OFFCHAIN_RHS_CONFIG, ONCHAIN_RHS_CONFIG } from './config';
+import { MediaType } from '@wakeuplabs/opid-sdk/dist/types/iden3comm/constants';
 
 // change currentConfig to alter every function
 // on-chainRhsConfig not working on credentialAtomicMTPV2
@@ -786,7 +787,7 @@ async function handleAuthRequestWithProfilesV3CircuitBeta() {
     : await identityWallet.createProfile(userDID, 100, authRequest.from);
 
   const resp = await authHandler.handleAuthorizationRequest(authProfileDID, authRawRequest, {
-    challenge: BigInt(2)
+    mediaType: MediaType.SignedMessage,
   });
 
   console.log(resp);
@@ -1061,7 +1062,7 @@ async function handleAuthRequestV3CircuitsBetaStateTransition() {
   console.log('=============== auth request ===============');
 
   const authHandlerRequest = await authHandler.handleAuthorizationRequest(userDID, msgBytes, {
-    challenge: BigInt(2)
+    mediaType: MediaType.SignedMessage,
   });
   console.log(JSON.stringify(authHandlerRequest, null, 2));
 }
@@ -1331,6 +1332,8 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
 }
 
 async function submitV3ZkResponse(useMongoStore = false) {
+  console.warn("By default ERC20 contract examples don't support V3, only selective disclosure.");
+
   let dataStorage, credentialWallet, identityWallet;
   if (useMongoStore) {
     ({ dataStorage, credentialWallet, identityWallet } = await initMongoDataStorageAndWallets());
@@ -1404,7 +1407,6 @@ async function submitV3ZkResponse(useMongoStore = false) {
       },
       params: {
         nullifierSessionId: 0,
-        verifierDid: ERC20_VERIFIER_DID
       }
     },
     userDID,
@@ -1552,7 +1554,6 @@ async function submitV3SelectiveDisclosureZkResponse(useMongoStore = false) {
       },
       params: {
         nullifierSessionId: 0,
-        verifierDid: ERC20_VERIFIER_DID
       }
     },
     userDID,
