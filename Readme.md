@@ -8,7 +8,7 @@
     ./dl_circuits.sh
     ```
 
-2. Copy over the `.env.example` into `.env`  
+2. Copy over the `.env.sample` into `.env`  
   You'll need to fill in `RPC_URL` and `WALLET_KEY` with your own endpoint and key respectively. The default env vars assume you will be using the Polygon Amoy network.
 
     ```bash
@@ -38,7 +38,12 @@
     THIRD_PARTY_WALLET_KEY=""
     # rpc url
     RPC_URL="https://sepolia.optimism.io"
-
+    # 'ERC20Verifier' or 'SelectiveDisclosureVerifier' or 'UniversalVerifier'
+    ERC20_VERIFIER="ERC20Verifier" 
+    # Universal Verifier (0x102eB31F9f2797e8A84a79c01FFd9aF7D1d9e556) or ERC20 Verifier (0xca6bfa62791d3c7c7ed1a5b320018c1C1dAC89Ee)  or SelectiveDisclosureVerifier (0x9001f41Fbe63fF09635Fe8Dfc532035BA34348B9)
+    ERC20_VERIFIER_ADDRESS='0xca6bfa62791d3c7c7ed1a5b320018c1C1dAC89Ee' 
+    # ERC20 Embedded (0xca6bfa62791d3c7c7ed1a5b320018c1C1dAC89Ee) or ERC20 Universally linked (0x76A9d02221f4142bbb5C07E50643cCbe0Ed6406C) or ERC20 Selective disclosure (0x9001f41Fbe63fF09635Fe8Dfc532035BA34348B9)
+    ERC20_ZK_AIRDROP_ADDRESS='0xca6bfa62791d3c7c7ed1a5b320018c1C1dAC89Ee' 
     ```
 
 3. Install dependencies
