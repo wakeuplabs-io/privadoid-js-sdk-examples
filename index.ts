@@ -13,7 +13,6 @@ import {
   AuthorizationRequestMessageBody,
   byteEncoder
 } from '@wakeuplabs/opid-sdk';
-
 import {
   initInMemoryDataStorageAndWallets,
   initCircuitStorage,
@@ -41,7 +40,7 @@ import {
   VERIFIER_DID
 } from './config';
 import { OFFCHAIN_RHS_CONFIG, ONCHAIN_RHS_CONFIG } from './config';
-import { MediaType } from '@wakeuplabs/opid-sdk/dist/types/iden3comm/constants';
+// import { MediaType } from '@wakeuplabs/opid-sdk/dist/types/iden3comm/constants';
 
 // change currentConfig to alter every function
 // on-chainRhsConfig not working on credentialAtomicMTPV2
@@ -787,7 +786,7 @@ async function handleAuthRequestWithProfilesV3CircuitBeta() {
     : await identityWallet.createProfile(userDID, 100, authRequest.from);
 
   const resp = await authHandler.handleAuthorizationRequest(authProfileDID, authRawRequest, {
-    mediaType: MediaType.SignedMessage,
+    mediaType: PROTOCOL_CONSTANTS.MediaType.SignedMessage,
   });
 
   console.log(resp);
@@ -1062,7 +1061,7 @@ async function handleAuthRequestV3CircuitsBetaStateTransition() {
   console.log('=============== auth request ===============');
 
   const authHandlerRequest = await authHandler.handleAuthorizationRequest(userDID, msgBytes, {
-    mediaType: MediaType.SignedMessage,
+    mediaType: PROTOCOL_CONSTANTS.MediaType.SignedMessage,
   });
   console.log(JSON.stringify(authHandlerRequest, null, 2));
 }
