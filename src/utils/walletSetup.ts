@@ -64,7 +64,7 @@ import {
   WALLET_KEY,
   RHS_ADDRESS,
   CHAIN_ID,
-} from "./config";
+} from "../config";
 
 const conf: EthConnectionConfig = {
   ...defaultEthConnectionConfig,

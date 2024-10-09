@@ -19,13 +19,13 @@ import {
   initProofService,
   initPackageManager,
   initMongoDataStorageAndWallets,
-} from "./walletSetup";
-import { ethers, Provider, Wallet, getBytes, hexlify } from "ethers";
-import { generateRequestData } from "./request";
-import { Erc20AirdropAbi, Erc20VerifierAbi } from "./abi";
+} from "./utils/walletSetup";
+import { ethers, Wallet, getBytes, hexlify } from "ethers";
+import { generateRequestData } from "./utils/request";
+import { Erc20AirdropAbi } from "./abis/airdrop";
+import { Erc20VerifierAbi } from './abis/verifier';
 import {
   DEFAULT_IDENTITY_CREATION_OPTIONS,
-  DEFAULT_NETWORK_CONNECTION,
   ERC20_VERIFIER,
   ERC20_VERIFIER_ADDRESS,
   ERC20_ZK_AIRDROP_ADDRESS,
@@ -39,8 +39,7 @@ import {
   THIRD_PARTY_WALLET_KEY,
   VERIFIER_DID,
 } from "./config";
-import { OFFCHAIN_RHS_CONFIG, ONCHAIN_RHS_CONFIG } from "./config";
-// import { MediaType } from '@wakeuplabs/opid-sdk/dist/types/iden3comm/constants';
+import { OFFCHAIN_RHS_CONFIG } from "./config";
 
 // change currentConfig to alter every function
 // on-chainRhsConfig not working on credentialAtomicMTPV2
