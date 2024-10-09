@@ -52,13 +52,13 @@ import { MongoDataSourceFactory, MerkleTreeMongodDBStorage } from '@0xpolygonid/
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongoClient, Db } from 'mongodb';
 import { ethers } from 'ethers';
-import { CIRCUITS_FOLDER, MONGO_DB_CONNECTION, RPC_URL, STATE_CONTRACT_ADDRESS, RHS_CHAIN_ID, MONGO_DB_TABLE_NAME, WALLET_KEY, RHS_ADDRESS } from './config';
+import { CIRCUITS_FOLDER, MONGO_DB_CONNECTION, RPC_URL, STATE_CONTRACT_ADDRESS, MONGO_DB_TABLE_NAME, WALLET_KEY, RHS_ADDRESS, CHAIN_ID } from './config';
 
 const conf: EthConnectionConfig = {
   ...defaultEthConnectionConfig,
   contractAddress: STATE_CONTRACT_ADDRESS,
   url: RPC_URL,
-  chainId: RHS_CHAIN_ID
+  chainId: CHAIN_ID
 };
 
 export function initInMemoryDataStorage(): IDataStorage {

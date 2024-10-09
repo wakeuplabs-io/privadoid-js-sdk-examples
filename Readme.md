@@ -9,7 +9,7 @@
     ```
 
 2. Copy over the `.env.sample` into `.env`  
-  You'll need to fill in `RPC_URL` and `WALLET_KEY` with your own endpoint and key respectively. The default env vars assume you will be using the Polygon Amoy network.
+  You'll need to fill in `RPC_URL` and `WALLET_KEY` with your own endpoint and key respectively. The default env vars assume you will be using the Optimism sepolia network.
 
     ```bash
     cp .env.example .env
@@ -30,7 +30,7 @@
     WALLET_KEY="" 
     # MongoDB connection string, uses in memory Mongo server if not specified
     MONGO_DB_CONNECTION=""
-    # third part yurl to polygon amoy network rpc node
+    # third part yurl to optimism sepolia network rpc node
     THIRD_PARTY_RPC_URL="" 
     # third party contract address in the linea test network
     THIRD_PARTY_CONTRACT_ADDRESS=""
@@ -64,14 +64,15 @@ The [function] should be replaced with one of the following options:
 
 - identityCreation  
 - issueCredential  
-- transitState
-- transitStateThirdPartyDID
+- transitState 
+- transitStateThirdPartyDID 
 - generateProofs
-- handleAuthRequest
+- handleAuthRequest TODO: fails
 - handleAuthRequestWithProfiles
 - handleAuthRequestNoIssuerStateTransition
 - generateProofsMongo
 - handleAuthRequestMongo
+<!-- TODO: update these to be capable of running them all together -->
 - submitSigV2ZkResponse
 - submitMtpV2ZkResponse
 - submitV3ZkResponse
