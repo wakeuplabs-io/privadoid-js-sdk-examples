@@ -1583,7 +1583,7 @@ async function submitMtpV2ZkResponse(useMongoStore = false) {
 
 async function submitV3ZkResponse(useMongoStore = false) {
   console.warn(
-    "By default ERC20 contract examples don't support V3, only selective disclosure."
+    "By default provided ERC20 contract examples don't support V3, only selective disclosure."
   );
 
   let dataStorage, credentialWallet, identityWallet;
