@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { proving } from "@iden3/js-jwz";
 import {
   BjjProvider,
@@ -168,7 +167,6 @@ export async function initInMemoryDataStorageAndWallets() {
   };
 }
 
-//TODO: fix mongo data storage
 export async function initMongoDataStorageAndWallets() {
   const dataStorage = await initMongoDataStorage();
   const credentialWallet = await initCredentialWallet(dataStorage);

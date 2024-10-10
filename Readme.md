@@ -70,8 +70,6 @@ The [function] should be replaced with one of the following options:
 - handleAuthRequest
 - handleAuthRequestWithProfiles
 - handleAuthRequestNoIssuerStateTransition
-- generateProofsMongo
-- handleAuthRequestMongo
 - submitSigV2ZkResponse
 - submitMtpV2ZkResponse
 - submitV3ZkResponse

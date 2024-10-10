@@ -1978,12 +1978,6 @@ async function main(choice: string) {
     case "generateRequestData":
       await generateRequestData();
       break;
-    case "generateProofsMongo":
-      await generateProofs(true);
-      break;
-    case "handleAuthRequestMongo":
-      await handleAuthRequest(true);
-      break;
     case "transitStateThirdPartyDID":
       await transitStateThirdPartyDID();
       break;
@@ -2014,8 +2008,6 @@ async function main(choice: string) {
       await handleAuthRequestWithProfilesV3CircuitBeta();
       await handleAuthRequestNoIssuerStateTransition();
       await generateRequestData();
-      // await generateProofs(true);
-      // await handleAuthRequest(true);
       await handleAuthRequestV3CircuitsBetaStateTransition();
   }
 }
