@@ -67,12 +67,11 @@ The [function] should be replaced with one of the following options:
 - transitState
 - transitStateThirdPartyDID
 - generateProofs
-- handleAuthRequest TODO: fails
+- handleAuthRequest
 - handleAuthRequestWithProfiles
 - handleAuthRequestNoIssuerStateTransition
 - generateProofsMongo
 - handleAuthRequestMongo
-<!-- TODO: update these to be capable of running them all together -->
 - submitSigV2ZkResponse
 - submitMtpV2ZkResponse
 - submitV3ZkResponse

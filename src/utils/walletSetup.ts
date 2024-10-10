@@ -213,7 +213,7 @@ export async function initCredentialWallet(
 
 export async function initCircuitStorage(): Promise<ICircuitStorage> {
   return new FSCircuitStorage({
-    dirname: path.join(__dirname, CIRCUITS_FOLDER),
+    dirname: path.join(__dirname, "../../circuits"),
   });
 }
 export async function initProofService(
